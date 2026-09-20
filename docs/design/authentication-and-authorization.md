@@ -142,7 +142,7 @@ Browser checks must cover keyboard-accessible login, clear session state, logout
 8. Define production HTTPS and deployment expectations.
 9. Approve audit and retention requirements.
 
-No authentication tables or routes should be added until at least decisions 1â€“6 are recorded.
+No authentication tables or routes should be added until at least decisions 1–6 are recorded.
 
 ## References
 

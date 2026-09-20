@@ -75,9 +75,9 @@ Post-organisation verification passed: production build, 4 API tests and 7 brows
 
 ## GitHub issue status audit
 
-All 34 GitHub issues were reviewed against verified local evidence on 20 September 2026. Issues #1, #2, #5, #6, #7, #8, #12, #13, #19, #25, #26, #27, #28, #29 and #32 are labelled `status:partial` with evidence and explicit remaining work. Issues #10 and #34 remain `status:review`. Issues #3, #4, #9, #11, #14â€“#18, #20â€“#24, #30, #31 and #33 remain without a progress-status label because their acceptance criteria have not been materially covered.
+All 34 GitHub issues were reviewed against verified local evidence on 20 September 2026. Issues #1, #2, #5, #6, #7, #8, #12, #13, #19, #25, #26, #27, #28, #29 and #32 are labelled `status:partial` with evidence and explicit remaining work. Issues #10 and #34 remain `status:review`. Issues #3, #4, #9, #11, #14–#18, #20–#24, #30, #31 and #33 remain without a progress-status label because their acceptance criteria have not been materially covered.
 
-All 34 issues remain open. No broad WBS issue was closed while team review, sponsor decisions, authentication or other acceptance criteria remain unmet. Source references in issues #1â€“#33 now match `docs/source-materials/ai-governance-compliance-tracker-project-proposal-and-plan.docx`. Existing dependencies and unrelated issue content were preserved. The GitHub Project board was not changed.
+All 34 issues remain open. No broad WBS issue was closed while team review, sponsor decisions, authentication or other acceptance criteria remain unmet. Source references in issues #1–#33 now match `docs/source-materials/ai-governance-compliance-tracker-project-proposal-and-plan.docx`. Existing dependencies and unrelated issue content were preserved. The GitHub Project board was not changed.
 
 ## Research baseline and framework mapping
 
@@ -108,3 +108,7 @@ No questionnaire, route, schema or user interface was implemented. Question text
 ## Secure runtime configuration
 
 Runtime settings now pass through a validated, immutable configuration module. The local-only bind address, port, SQLite path and JSON body limit are configurable; unsafe bind addresses, invalid values and unknown `AITRACE_` settings stop startup. Host and origin checks, security response headers, ignored local environment files and a non-secret `.env.example` protect the current unauthenticated prototype boundary. Configuration and API tests cover the fail-closed behavior.
+
+## Policy-neutral scoring engine
+
+The pure risk-scoring seam for issue #15 is implemented with synthetic test definitions only. It produces deterministic, versioned and source-traceable explanations from approved definitions, while rejecting draft or retired definitions, invalid responses, ambiguous priorities, unknown references, inapplicable categories and missing outcomes. It does not persist assessments, expose an API, assign approval state or assert compliance. Approved governance questions, thresholds, labels and institutional sources remain required before application integration.
