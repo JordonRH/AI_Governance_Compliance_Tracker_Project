@@ -1,16 +1,42 @@
 # AITrace
 
-AITrace is a planned web application that helps faculty register AI use, assess governance risk and track follow-up actions across education, administration and research.
+AITrace is a local web application prototype that helps faculty register AI use, assess governance risk and track follow-up actions across education, administration and research.
 
 Developed for the **University of Canberra ICT Capstone Project 2026-S2R-04 — AI Governance Compliance Tracker**, sponsored by **Sri Ramakrishna Engineering College**.
 
 ## Project status
 
-**Requirements review and planning.** Application implementation has not started, and there is no runnable application or installation command yet.
+**Initial interface and backend ready for team review.** React/Vite, Express and SQLite provide a local overview and AI registry. Authentication and governance assessment are not implemented. Progressive implementation continues at Jordon's request, with small verified increments and team review pending.
 
 The proposal's 33 work breakdown structure (WBS) activities are recorded in [GitHub Issues](https://github.com/JordonRH/AI_Governance_Compliance_Tracker_Project/issues). These were imported as draft planning records. Suggested owners, estimates, acceptance criteria and dependencies require team review; they do not establish completed work or actual contributions.
 
-Current work starts with [requirements and scope (#1)](https://github.com/JordonRH/AI_Governance_Compliance_Tracker_Project/issues/1). System design follows agreement on the requirements baseline.
+Jordon reported requirements review complete and approved the initial stack on 20 September 2026. Jordon leads initial implementation; teammates will review later. See [development progress](docs/project/progress.md) for delivered work, open criteria and review steps.
+
+## Run locally
+
+Requires Node.js 26.5 or later and npm. From the repository folder:
+
+```powershell
+npm install
+npm run dev
+```
+
+Open http://127.0.0.1:5173. Stop with Ctrl+C. The backend creates `data/aitrace.sqlite` automatically. The registry starts empty; use **Load fictional examples** to add demonstration data.
+
+```powershell
+npm run build
+npm run start
+```
+
+These commands build and serve the local interface. Stop the development instance before starting the built instance.
+
+```powershell
+npm test
+npm run test:e2e:install
+npm run test:e2e
+```
+
+Checks cover the API, SQLite persistence and browser workflows. See [local development](docs/project/development.md) for details. Use fictional data only; login and role permissions are not available yet.
 
 ## Intended workflow
 
@@ -29,18 +55,18 @@ Exact roles, approval workflows, assessment questions, framework mappings, scori
 
 | Area | Decision |
 | --- | --- |
-| Frontend | React |
-| Backend | Node.js |
+| Frontend | React with Vite |
+| Backend | Node.js with Express |
 | Integration | REST API |
 | End-to-end testing | Playwright |
 | Version control | Git and GitHub |
 | Development and demonstration | Local deployment |
 | Application structure | A simple modular monolith is preferred |
-| Database | TBD |
+| Database | SQLite through the built-in Node.js SQLite module |
 | Authentication and authorisation implementation | TBD |
 | File storage, dashboard libraries, reporting and reminders | TBD |
 
-Unresolved technologies will be discussed before selection. Setup instructions will be added when the development foundation is implemented under [#10](https://github.com/JordonRH/AI_Governance_Compliance_Tracker_Project/issues/10).
+Unresolved technologies and governance rules remain open. The registry is a local demonstration, not an authenticated institutional system. Read the [documentation index](docs/README.md), [local development](docs/project/development.md), [architecture](docs/project/architecture.md) and [progress](docs/project/progress.md) before extending it.
 
 ## Team and collaboration
 
@@ -70,7 +96,7 @@ The existing spreadsheet tickets map to GitHub as follows:
 
 ## Documentation and delivery
 
-Project source documents are maintained in the team's shared documentation workspace. The planning baseline includes the capstone requirements, project proposal and plan, ticket register, and Google Drive structure/workflow guide. Record sponsor decisions in meeting minutes and link the relevant evidence from issues.
+Original project source documents are preserved in [`docs/source-materials/`](docs/source-materials/). The planning baseline includes the capstone requirements, project proposal and plan, ticket register, and Google Drive structure/workflow guide. Record sponsor decisions in meeting minutes and link the relevant evidence from issues.
 
 Planned deliverables include the prototype, framework mapping, version-controlled source, setup and user guidance, testing evidence, a final demonstration and handover, and the sponsor-requested research paper. Research format and evaluation expectations remain subject to confirmation.
 
