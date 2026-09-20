@@ -84,7 +84,7 @@ Authoritative and sector sources:
 
 - National Institute of Standards and Technology. [Artificial Intelligence Risk Management Framework 1.0](https://doi.org/10.6028/NIST.AI.100-1), 2023.
 - Australian Department of Industry, Science and Resources. [Australia's AI Ethics Principles](https://www.industry.gov.au/publications/australias-ai-ethics-principles).
-- International Organization for Standardization. [ISO/IEC 42001:2023 â€” AI management systems](https://www.iso.org/standard/42001), public overview.
+- International Organization for Standardization. [ISO/IEC 42001:2023 — AI management systems](https://www.iso.org/standard/42001), public overview.
 - Office of the Australian Information Commissioner. [Guidance on privacy and the use of commercially available AI products](https://www.oaic.gov.au/privacy/privacy-guidance-for-organisations-and-government-agencies/guidance-on-privacy-and-the-use-of-commercially-available-ai-products), updated 17 January 2025.
 - UNESCO. [Guidance for generative AI in education and research](https://unesdoc.unesco.org/ark:/48223/pf0000386693), 2023.
 - Tertiary Education Quality and Standards Agency. [Enacting assessment reform in a time of artificial intelligence](https://www.teqsa.gov.au/guides-resources/resources/corporate-publications/enacting-assessment-reform-time-artificial-intelligence), 2025.

@@ -1,6 +1,6 @@
 # Explainable risk-scoring module design
 
-Status: Partial design for GitHub issue #9
+Status: Partial implementation for GitHub issues #9 and #15
 Prepared: 20 September 2026
 Decision state: Module seam and invariants proposed; questions, rules, labels and thresholds are unapproved.
 
@@ -169,3 +169,9 @@ These templates identify information needed for future approval. They are not te
 8. Approve example-scenario outcomes.
 
 Until then, this design is implementation-ready at the module seam but has no authorised rule content.
+
+## Implementation checkpoint
+
+`server/domain/risk-scoring.js` now implements the policy-neutral evaluation seam. It validates approved definitions and completed inputs, orders matching rules by explicit unique priority, preserves the exact definition identifier and version, and returns traceable explanations and deduplicated required or recommended actions. Invalid definitions, incomplete inputs, unknown response/context fields, inapplicable categories and unmatched outcomes fail closed without a risk result.
+
+Tests use synthetic labels, sources, questions and thresholds. No fixture is an institutional policy or proposed production rule. Persistence, questionnaire/API integration and approved rule content remain deferred pending the decisions listed below.

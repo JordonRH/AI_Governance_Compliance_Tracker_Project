@@ -16,7 +16,9 @@ The first checkpoint delivered an initial React interface with a working Node.js
 | `server/config.js` | Validated, immutable runtime configuration and local-host policy |
 | `server/app.js` | JSON API, input validation and registry operations |
 | `server/database.js` | SQLite connection and initial schema migration |
+| `server/domain/risk-scoring.js` | Pure deterministic evaluation, validation and explanation module |
 | `tests/api/registry-api.test.js` | API behaviour and persistence checks |
+| `tests/domain/risk-scoring.test.js` | Synthetic scoring contracts, validation and deterministic trace checks |
 | `tests/e2e/registry.spec.js` | Browser workflow and responsive checks |
 | `tests/e2e/theme.spec.js` | Theme, record-detail and responsive browser checks |
 | `docs/project/` | Setup, design decisions, progress and review notes |
