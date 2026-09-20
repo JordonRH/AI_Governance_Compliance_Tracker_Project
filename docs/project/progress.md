@@ -112,3 +112,7 @@ Runtime settings now pass through a validated, immutable configuration module. T
 ## Policy-neutral scoring engine
 
 The pure risk-scoring seam for issue #15 is implemented with synthetic test definitions only. It produces deterministic, versioned and source-traceable explanations from approved definitions, while rejecting draft or retired definitions, invalid responses, ambiguous priorities, unknown references, inapplicable categories and missing outcomes. It does not persist assessments, expose an API, assign approval state or assert compliance. Approved governance questions, thresholds, labels and institutional sources remain required before application integration.
+
+## Evidence intake foundation
+
+Issue #16 now has a pure evidence-intake validation seam with synthetic tests. An approved versioned policy must explicitly allow the byte limit, media type, extension and leading file signature. Accepted output retains a SHA-256 digest and assessment/checklist-item link with pending review status. The module performs no storage, upload, retrieval, malware scanning or authorisation. Those acceptance criteria remain open pending the assessment model, authentication roles, storage decision, retention requirements and approved review metadata.
