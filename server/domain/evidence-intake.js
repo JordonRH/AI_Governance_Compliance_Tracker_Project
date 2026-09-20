@@ -1,20 +1,6 @@
 import { createHash } from 'node:crypto';
 import { extname } from 'node:path';
-
-function finding(code, message, path) {
-  return Object.freeze({ code, message, ...(path ? { path } : {}) });
-}
-
-function freeze(value) {
-  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
-  for (const child of Object.values(value)) freeze(child);
-  return Object.freeze(value);
-}
-
-function nonEmpty(value) {
-  return typeof value === 'string' && value.trim() !== '';
-}
-
+import { finding, freeze, nonEmptyText as nonEmpty } from './validation.js';
 function signatureBytes(hex) {
   if (typeof hex !== 'string' || hex.length < 2 || hex.length % 2 || !/^[0-9a-f]+$/i.test(hex)) return null;
   return Buffer.from(hex, 'hex');

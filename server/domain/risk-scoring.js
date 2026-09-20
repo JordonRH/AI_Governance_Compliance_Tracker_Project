@@ -1,35 +1,25 @@
+import { finding, freeze as immutable, isDateOnly, isTimestamp, nonEmptyText as text } from './validation.js';
+
 const states = new Set(['draft', 'approved', 'retired']);
 const questionTypes = new Set(['boolean', 'singleChoice', 'number']);
 const operators = new Set(['equals', 'oneOf', 'greaterThanOrEqual', 'lessThanOrEqual']);
 const contextFields = new Set(['category']);
 const categories = new Set(['Education', 'Administration', 'Research']);
 
-function finding(code, message, path) {
-  return Object.freeze({ code, message, ...(path ? { path } : {}) });
-}
-
-function immutable(value) {
-  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
-  for (const child of Object.values(value)) immutable(child);
-  return Object.freeze(value);
-}
-
-function text(value) {
-  return typeof value === 'string' && value.trim() !== '';
-}
-
 function validateDefinition(definition) {
   const findings = [];
   if (!definition || typeof definition !== 'object' || Array.isArray(definition)) {
     return [finding('INVALID_DEFINITION', 'The assessment definition must be an object.', 'definition')];
   }
-  for (const key of ['id', 'version', 'effectiveFrom']) {
+  for (const key of ['id', 'version']) {
     if (!text(definition[key])) findings.push(finding('INVALID_DEFINITION_FIELD', `${key} is required.`, `definition.${key}`));
   }
+  if (!isDateOnly(definition.effectiveFrom)) findings.push(finding('INVALID_EFFECTIVE_DATE', 'effectiveFrom must be a real date in YYYY-MM-DD format.', 'definition.effectiveFrom'));
+  if (!Array.isArray(definition.appliesTo) || definition.appliesTo.length === 0 || new Set(definition.appliesTo).size !== definition.appliesTo.length || definition.appliesTo.some(category => !categories.has(category))) findings.push(finding('INVALID_APPLICABILITY', 'appliesTo must contain unique supported categories.', 'definition.appliesTo'));
   if (!states.has(definition.status)) findings.push(finding('INVALID_DEFINITION_STATE', 'Definition status must be draft, approved or retired.', 'definition.status'));
   else if (definition.status !== 'approved') findings.push(finding('DEFINITION_NOT_APPROVED', 'Only an approved definition can produce an evaluation.', 'definition.status'));
-  if (!definition.approval || !text(definition.approval.approvedAt) || !text(definition.approval.approvedBy)) {
-    findings.push(finding('MISSING_APPROVAL_RECORD', 'An approval record with approvedAt and approvedBy is required.', 'definition.approval'));
+  if (!definition.approval || !isTimestamp(definition.approval.approvedAt) || !text(definition.approval.approvedBy)) {
+    findings.push(finding('MISSING_APPROVAL_RECORD', 'An approval record with a UTC approvedAt timestamp and approvedBy is required.', 'definition.approval'));
   }
   if (!Array.isArray(definition.sources) || definition.sources.length === 0) {
     findings.push(finding('MISSING_SOURCE_REFERENCES', 'At least one source reference is required.', 'definition.sources'));
@@ -78,11 +68,28 @@ function validateDefinition(definition) {
       if (condition?.input === 'response' && !questions.has(condition.id)) findings.push(finding('UNKNOWN_QUESTION_REFERENCE', 'The condition references an unknown question.', `${conditionPath}.id`));
       if (condition?.input === 'context' && !contextFields.has(condition.id)) findings.push(finding('UNKNOWN_CONTEXT_REFERENCE', 'The condition references an unknown context field.', `${conditionPath}.id`));
       if (!operators.has(condition?.operator)) findings.push(finding('INVALID_CONDITION_OPERATOR', 'The condition uses an unsupported operator.', `${conditionPath}.operator`));
-      if (condition?.operator === 'oneOf' && !Array.isArray(condition.value)) findings.push(finding('INVALID_CONDITION_VALUE', 'oneOf requires an array value.', `${conditionPath}.value`));
+      const target = condition?.input === 'response' ? questions.get(condition.id) : condition?.input === 'context' ? { type: 'singleChoice', options: [...categories] } : null;
+      const values = condition?.operator === 'oneOf' ? condition.value : [condition?.value];
+      const numericOperator = ['greaterThanOrEqual', 'lessThanOrEqual'].includes(condition?.operator);
+      const invalidValue = condition?.operator === 'oneOf' ? !Array.isArray(condition.value) || condition.value.length === 0
+        : numericOperator ? target?.type !== 'number' || typeof condition.value !== 'number' || !Number.isFinite(condition.value)
+          : condition?.operator === 'equals' && target ? target.type === 'boolean' ? typeof condition.value !== 'boolean'
+            : target.type === 'number' ? typeof condition.value !== 'number' || !Number.isFinite(condition.value)
+              : !values.every(value => typeof value === 'string' && target.options.includes(value)) : false;
+      const invalidOneOfValue = condition?.operator === 'oneOf' && target && (target.type === 'number' || values.some(value => target.type === 'boolean' ? typeof value !== 'boolean' : typeof value !== 'string' || !target.options.includes(value)));
+      if (invalidValue || invalidOneOfValue) findings.push(finding('INVALID_CONDITION_VALUE', 'Condition value must match the referenced input type and operator.', `${conditionPath}.value`));
     }
-    for (const [actionIndex, action] of (rule?.actions || []).entries()) {
+    if (rule?.actions !== undefined && !Array.isArray(rule.actions)) findings.push(finding('INVALID_RULE_ACTIONS', 'Rule actions must be an array when supplied.', `${path}.actions`));
+    for (const [actionIndex, action] of (Array.isArray(rule?.actions) ? rule.actions : []).entries()) {
       if (!text(action?.id) || !text(action?.label) || !['required', 'recommended'].includes(action?.kind)) findings.push(finding('INVALID_ACTION', 'Actions need an id, label and required or recommended kind.', `${path}.actions[${actionIndex}]`));
     }
+  }
+  const actionDefinitions = new Map();
+  for (const [ruleIndex, rule] of (definition.rules || []).entries()) for (const [actionIndex, action] of (Array.isArray(rule?.actions) ? rule.actions : []).entries()) {
+    if (!text(action?.id) || !text(action?.label) || !['required', 'recommended'].includes(action?.kind)) continue;
+    const signature = JSON.stringify({ kind: action.kind, label: action.label });
+    if (actionDefinitions.has(action.id) && actionDefinitions.get(action.id) !== signature) findings.push(finding('CONFLICTING_ACTION_DEFINITION', 'Repeated action ids must use the same kind and label.', `definition.rules[${ruleIndex}].actions[${actionIndex}].id`));
+    else actionDefinitions.set(action.id, signature);
   }
   return findings;
 }
@@ -106,7 +113,7 @@ function validateInputs(definition, responses, context) {
   if (!context || typeof context !== 'object' || Array.isArray(context)) return [...findings, finding('INVALID_CONTEXT', 'Evaluation context must be an object.', 'context')];
   for (const key of Object.keys(context).sort()) if (!contextFields.has(key) && key !== 'evaluatedAt') findings.push(finding('UNKNOWN_CONTEXT_INPUT', 'The context field is not supported.', `context.${key}`));
   if (!categories.has(context.category)) findings.push(finding('INVALID_CATEGORY', 'Context category must be Education, Administration or Research.', 'context.category'));
-  if (!text(context.evaluatedAt) || Number.isNaN(Date.parse(context.evaluatedAt))) findings.push(finding('INVALID_EVALUATED_AT', 'evaluatedAt must be an ISO-compatible timestamp supplied by the caller.', 'context.evaluatedAt'));
+  if (!isTimestamp(context.evaluatedAt)) findings.push(finding('INVALID_EVALUATED_AT', 'evaluatedAt must be a UTC ISO timestamp supplied by the caller.', 'context.evaluatedAt'));
   if (Array.isArray(definition.appliesTo) && !definition.appliesTo.includes(context.category)) findings.push(finding('DEFINITION_NOT_APPLICABLE', 'The definition does not apply to this category.', 'context.category'));
   return findings;
 }

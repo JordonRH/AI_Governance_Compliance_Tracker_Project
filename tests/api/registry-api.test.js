@@ -34,6 +34,7 @@ test('invalid and untrusted requests are rejected', async () => {
   assert.equal((await api('/api/registry',{method:'POST',body:'{}'})).response.status,415);
   assert.equal((await api('/api/registry/missing')).response.status,404);
   assert.equal((await api('/api/registry',{headers:{Origin:'https://example.com'}})).response.status,403);
+  assert.equal((await api('/api/registry',{headers:{Origin:'http://localhost:65535'}})).response.status,403);
   assert.equal(await statusWithHost('example.com'),403);
 });
 test('examples are idempotent and counted', async () => {

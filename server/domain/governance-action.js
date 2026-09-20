@@ -1,29 +1,6 @@
+import { finding as issue, freeze, isDateOnly as dateOnly, isTimestamp as timestamp, nonEmptyText as text } from './validation.js';
+
 const statuses = Object.freeze(['Not Started', 'In Progress', 'Complete']);
-
-function issue(code, message, path) {
-  return Object.freeze({ code, message, ...(path ? { path } : {}) });
-}
-
-function freeze(value) {
-  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
-  for (const child of Object.values(value)) freeze(child);
-  return Object.freeze(value);
-}
-
-function text(value, maximum = Infinity) {
-  return typeof value === 'string' && value.trim() !== '' && value.trim().length <= maximum;
-}
-
-function dateOnly(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
-}
-
-function timestamp(value) {
-  return typeof value === 'string' && value !== '' && !Number.isNaN(Date.parse(value));
-}
-
 function commonInputFindings(input) {
   const findings = [];
   if (!text(input?.title, 240)) findings.push(issue('INVALID_TITLE', 'Action title is required and must not exceed 240 characters.', 'title'));
@@ -41,6 +18,19 @@ function contextFindings(context) {
 
 function change(field, from, to) {
   return Object.freeze({ field, from, to });
+}
+
+function currentActionFindings(current) {
+  if (!current || typeof current !== 'object' || Array.isArray(current)) return [issue('INVALID_CURRENT_ACTION', 'A valid current action is required.', 'current')];
+  const findings = [];
+  if (!text(current.id, 120) || !text(current.aiUseId, 120) || (current.assessmentId !== undefined && !text(current.assessmentId, 120))) findings.push(issue('INVALID_CURRENT_ACTION', 'Current action links are invalid.', 'current'));
+  findings.push(...commonInputFindings(current));
+  if (!statuses.includes(current.status) || !Number.isSafeInteger(current.version) || current.version < 1 || !timestamp(current.createdAt) || !timestamp(current.updatedAt) || !Array.isArray(current.history) || current.history.length !== current.version) findings.push(issue('INVALID_CURRENT_ACTION', 'Current action state and version history are invalid.', 'current'));
+  if (current.status === 'Complete' ? !timestamp(current.completedAt) : current.completedAt !== null) findings.push(issue('INVALID_CURRENT_ACTION', 'Current action completion timestamp is inconsistent with its status.', 'current.completedAt'));
+  for (const [index, entry] of (Array.isArray(current.history) ? current.history : []).entries()) {
+    if (entry?.version !== index + 1 || !timestamp(entry?.changedAt) || !text(entry?.changedBy, 120) || !Array.isArray(entry?.changes) || entry.changes.length === 0) findings.push(issue('INVALID_CURRENT_ACTION', 'Current action history is malformed.', `current.history[${index}]`));
+  }
+  return findings;
 }
 
 export function createGovernanceAction(input, context) {
@@ -81,10 +71,7 @@ export function createGovernanceAction(input, context) {
 
 export function updateGovernanceAction(current, command, context) {
   const findings = [];
-  if (!current || typeof current !== 'object' || !Number.isSafeInteger(current.version) || !Array.isArray(current.history)) {
-    return freeze({ status: 'invalid', findings: [issue('INVALID_CURRENT_ACTION', 'A valid current action is required.', 'current')] });
-  }
-  findings.push(...contextFindings(context));
+  findings.push(...currentActionFindings(current), ...contextFindings(context));
   if (!Number.isSafeInteger(command?.expectedVersion) || command.expectedVersion !== current.version) findings.push(issue('VERSION_CONFLICT', 'The action changed after it was loaded.', 'expectedVersion'));
   const editable = ['title', 'owner', 'dueDate', 'status'];
   const supplied = editable.filter(field => Object.hasOwn(command || {}, field));
@@ -95,9 +82,16 @@ export function updateGovernanceAction(current, command, context) {
   if (command?.status !== undefined && !statuses.includes(command.status)) findings.push(issue('INVALID_STATUS', 'Status must be Not Started, In Progress or Complete.', 'status'));
   if (findings.length) return freeze({ status: 'invalid', findings });
 
-  const changes = supplied.filter(field => command[field] !== current[field]).map(field => change(field, current[field], typeof command[field] === 'string' ? command[field].trim() : command[field]));
+  const normalized = {
+    title: candidate.title.trim(),
+    owner: candidate.owner.trim(),
+    dueDate: candidate.dueDate,
+    status: command?.status ?? current.status
+  };
+  const changes = supplied.filter(field => normalized[field] !== current[field]).map(field => change(field, current[field], normalized[field]));
   if (changes.length === 0) return freeze({ status: 'unchanged', action: current });
-  const nextStatus = command.status ?? current.status;
+  if (context.timestamp <= current.updatedAt) return freeze({ status: 'invalid', findings: [issue('NON_MONOTONIC_TIMESTAMP', 'Update timestamp must be later than the current action timestamp.', 'context.timestamp')] });
+  const nextStatus = normalized.status;
   const nextVersion = current.version + 1;
   const action = {
     ...current,

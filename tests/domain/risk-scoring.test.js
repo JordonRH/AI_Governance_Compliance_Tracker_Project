@@ -86,3 +86,29 @@ test('a completed assessment with no matching rule has no inferred outcome', () 
   assert.equal(result.status, 'invalid');
   assert.equal(result.findings[0].code, 'NO_MATCHING_OUTCOME');
 });
+
+
+test('malformed dates, typed conditions and rule actions fail closed without throwing', () => {
+  const badDate = evaluateAssessment(definition({ effectiveFrom: '2026-02-30' }), responses, context);
+  assert.ok(badDate.findings.some(item => item.code === 'INVALID_EFFECTIVE_DATE'));
+
+  const badApproval = definition();
+  badApproval.approval.approvedAt = 'not-a-timestamp';
+  assert.ok(evaluateAssessment(badApproval, responses, context).findings.some(item => item.code === 'MISSING_APPROVAL_RECORD'));
+
+  const badCondition = definition();
+  badCondition.rules[0].conditions[0].value = 'true';
+  assert.ok(evaluateAssessment(badCondition, responses, context).findings.some(item => item.code === 'INVALID_CONDITION_VALUE'));
+
+  const badActions = definition();
+  badActions.rules[0].actions = {};
+  assert.ok(evaluateAssessment(badActions, responses, context).findings.some(item => item.code === 'INVALID_RULE_ACTIONS'));
+});
+
+test('conflicting repeated action identifiers fail closed', () => {
+  const broken = definition();
+  broken.rules[1].actions = [{ id: 'human-review', kind: 'recommended', label: 'Conflicting action.' }];
+  const result = evaluateAssessment(broken, responses, context);
+  assert.equal(result.status, 'invalid');
+  assert.ok(result.findings.some(item => item.code === 'CONFLICTING_ACTION_DEFINITION'));
+});
