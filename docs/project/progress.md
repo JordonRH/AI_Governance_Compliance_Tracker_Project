@@ -120,3 +120,7 @@ Issue #16 now has a pure evidence-intake validation seam with synthetic tests. A
 ## Governance action foundation
 
 Issue #17 now has a pure governance-action aggregate with owner, due date, Not Started/In Progress/Complete status, optimistic version checks, immutable material-change history and deterministic overdue classification from a caller-supplied date. Tests cover creation, editing, completion, reopening, conflicts, invalid dates, no-op changes and timing boundaries. Persistence, authenticated permissions, API/UI integration and approved transition restrictions remain open.
+
+## Reminder planning foundation
+
+Issue #18 now has a pure reminder planner for action and policy-review due dates. Approved versioned rules define upcoming windows, due-today handling and repeatable overdue cadence. Closed items are excluded, invalid batches fail without a partial plan, and each deterministic intent has an idempotency key. No channel, recipient, scheduler or delivery claim is introduced; those remain open pending deployment, role and communication decisions.

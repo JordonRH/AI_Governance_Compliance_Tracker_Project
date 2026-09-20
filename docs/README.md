@@ -34,6 +34,7 @@ Research documents are review inputs. They do not establish sponsor policy, lega
 - [Governance assessment module](design/governance-assessment-module.md): proposed questionnaire lifecycle, immutable submission, validation and scoring handoff without unapproved question content.
 - [Policy and evidence handling](design/policy-and-evidence-handling.md): implemented intake-validation seam and unresolved storage, retrieval and permission decisions.
 - [Governance action tracking](design/governance-action-tracking.md): implemented action lifecycle/history seam and unresolved persistence and permission decisions.
+- [Reminder planning](design/reminder-planning.md): implemented channel-neutral timing/idempotency seam and unresolved scheduling and delivery decisions.
 
 ## Repository cadence
 

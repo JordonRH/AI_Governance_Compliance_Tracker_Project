@@ -10,7 +10,7 @@
                     "dev":  "node --watch-path=./server server/index.js",
                     "build":  "vite build",
                     "start":  "node server/index.js --production",
-                    "test":  "node --test tests/api/registry-api.test.js tests/config/config.test.js tests/domain/risk-scoring.test.js tests/domain/evidence-intake.test.js tests/domain/governance-action.test.js",
+                    "test":  "node --test tests/api/registry-api.test.js tests/config/config.test.js tests/domain/risk-scoring.test.js tests/domain/evidence-intake.test.js tests/domain/governance-action.test.js tests/domain/reminder-planning.test.js",
                     "test:e2e":  "playwright test",
                     "test:e2e:install":  "playwright install chromium"
                 },
