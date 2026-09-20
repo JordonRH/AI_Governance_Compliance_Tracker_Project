@@ -1,0 +1,43 @@
+/* Temporary theme convenience requested by Jordon, not a sponsor requirement. */
+:root { color-scheme: light; }
+.topbar-actions { display: flex; align-items: center; gap: 12px; }
+.theme-toggle { padding: 7px 12px; }
+.record-details { margin: 24px 0; }
+.record-details div { margin: 16px 0; }
+.record-details dt { font-weight: 600; font-size: 12px; }
+.record-details dd { margin: 5px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dialog-heading h2 { overflow-wrap: anywhere; }
+:root[data-theme="dark"] { color-scheme: dark; background: #142125; color: #e0e9e5; }
+[data-theme="dark"] .topbar { background: #1b2c30; border-color: #3e5354; color: #bacbc5; }
+[data-theme="dark"] .topbar strong { color: #e0e9e5; }
+[data-theme="dark"] :is(.panel, .metrics article, dialog) { background: #1e3034; color: #e0e9e5; border-color: #3e5354; }
+[data-theme="dark"] :is(.subtitle, .eyebrow, .muted, .metrics p, .metrics small, .next-step>p:not(.eyebrow), .record-sub, .empty p, .loading, .filters label, .result-count, .prose p:not(.eyebrow), .prose ol, .page-footer, .form-help) { color: #b7c9c1; }
+[data-theme="dark"] :is(.secondary, input, select, textarea) { background: #18282c; color: #e0e9e5; border-color: #6a827a; }
+[data-theme="dark"] input::placeholder { color: #aabbB3; }
+[data-theme="dark"] .secondary:hover { background: #314b48; }
+[data-theme="dark"] .theme-toggle[aria-pressed="true"] { background: #38594e; border-color: #9ec5af; }
+[data-theme="dark"] .primary { background: #b8dbc5; color: #18382e; }
+[data-theme="dark"] .primary:hover { background: #d1ead9; }
+[data-theme="dark"] :is(.text-button, .record-link) { color: #b8dbc5; }
+[data-theme="dark"] .intro-panel { background: #293e35; border-color: #4a6151; }
+[data-theme="dark"] .intro-panel h2 { color: #deebd8; }
+[data-theme="dark"] :is(.intro-panel p:not(.eyebrow), .intro-aside small, .intro-aside>span) { color: #bfd3bb; }
+[data-theme="dark"] .intro-aside { border-color: #5c725c; }
+[data-theme="dark"] .prototype-note { color: #e2cca2; background: #3b3426; border-color: #695b3e; }
+[data-theme="dark"] .local-badge { color: #c2d7bf; background: #293e35; border-color: #5b755b; }
+[data-theme="dark"] .status { color: #e1d7b3; background: #423e2e; }
+[data-theme="dark"] .category.education { background: #2a4737; color: #c0e4c8; }
+[data-theme="dark"] .category.administration { background: #473e2c; color: #e9d5ab; }
+[data-theme="dark"] .category.research { background: #2b4055; color: #c5ddf4; }
+[data-theme="dark"] th { background: #19292d; color: #bacbc0; border-color: #3e5354; }
+[data-theme="dark"] :is(td, .dialog-actions) { border-color: #3e5354; }
+[data-theme="dark"] tbody tr:hover { background: #293e40; }
+[data-theme="dark"] .bar { background: #3d514b; }
+[data-theme="dark"] .notice { background: #294735; color: #d0ebd4; }
+[data-theme="dark"] .error { background: #4b2e2b; color: #ffd1c7; border-color: #976257; }
+[data-theme="dark"] .field-error { color: #ffb7a8; }
+[data-theme="dark"] dialog::backdrop { background: #050e14a6; }
+@media(max-width:760px) {
+  .topbar { height: auto; min-height: 55px; padding: 12px 20px; gap: 10px; flex-wrap: wrap; }
+  .topbar-actions { flex-wrap: wrap; }
+}

@@ -1,0 +1,27 @@
+{
+    "name":  "aitrace",
+    "version":  "0.1.0",
+    "private":  true,
+    "type":  "module",
+    "engines":  {
+                    "node":  "\u003e=26.5.0"
+                },
+    "scripts":  {
+                    "dev":  "node --watch-path=./server server/index.js",
+                    "build":  "vite build",
+                    "start":  "node server/index.js --production",
+                    "test":  "node --test tests/api/registry-api.test.js tests/config/config.test.js",
+                    "test:e2e":  "playwright test",
+                    "test:e2e:install":  "playwright install chromium"
+                },
+    "dependencies":  {
+                         "express":  "^5.1.0",
+                         "react":  "^19.1.0",
+                         "react-dom":  "^19.1.0"
+                     },
+    "devDependencies":  {
+                            "@playwright/test":  "^1.55.0",
+                            "@vitejs/plugin-react":  "^5.0.0",
+                            "vite":  "^7.1.0"
+                        }
+}
