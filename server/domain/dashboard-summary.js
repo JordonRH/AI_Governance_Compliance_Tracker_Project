@@ -1,24 +1,7 @@
 import { classifyActionTiming } from './governance-action.js';
+import { finding, freeze, isDateOnly as dateOnly, nonEmptyText as text } from './validation.js';
 
 const categories = Object.freeze(['Education', 'Administration', 'Research']);
-
-function finding(code, message, path) {
-  return Object.freeze({ code, message, ...(path ? { path } : {}) });
-}
-function freeze(value) {
-  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
-  for (const child of Object.values(value)) freeze(child);
-  return Object.freeze(value);
-}
-function text(value) {
-  return typeof value === 'string' && value.trim() !== '';
-}
-function dateOnly(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
-}
-
 function validateScope(scope) {
   const findings = [];
   if (!scope || typeof scope !== 'object' || Array.isArray(scope)) return [finding('INVALID_SCOPE', 'Dashboard scope must be an object.', 'scope')];
@@ -61,7 +44,9 @@ function validateActions(actions) {
 }
 
 export function buildDashboardSnapshot(scope, records, actions, context) {
-  const findings = [...validateScope(scope), ...validateRecords(records), ...validateActions(actions)];
+  const findings = [...validateScope(scope)];
+  if (!Array.isArray(records)) findings.push(finding('INVALID_RECORDS', 'Registry records must be an array.', 'records'));
+  if (!Array.isArray(actions)) findings.push(finding('INVALID_ACTIONS', 'Actions must be an array.', 'actions'));
   if (!dateOnly(context?.asOfDate)) findings.push(finding('INVALID_AS_OF_DATE', 'asOfDate must be a real YYYY-MM-DD date.', 'context.asOfDate'));
   if (context?.category !== undefined && !categories.includes(context.category)) findings.push(finding('INVALID_CATEGORY_FILTER', 'Category filter is unsupported.', 'context.category'));
   if (context?.category !== undefined && Array.isArray(scope?.categories) && !scope.categories.includes(context.category)) findings.push(finding('CATEGORY_OUTSIDE_SCOPE', 'Category filter is outside the authorised scope.', 'context.category'));
@@ -69,8 +54,12 @@ export function buildDashboardSnapshot(scope, records, actions, context) {
 
   const institutions = new Set(scope.institutionIds);
   const allowedCategories = new Set(scope.categories);
-  const visible = records.filter(record => institutions.has(record.institutionId) && allowedCategories.has(record.category) && (!context.category || record.category === context.category));
+  const visible = records.filter(record => institutions.has(record?.institutionId) && allowedCategories.has(record?.category) && (!context.category || record.category === context.category));
+  const visibleFindings = validateRecords(visible);
   const visibleIds = new Set(visible.map(record => record.id));
+  const relevant = actions.filter(action => visibleIds.has(action?.aiUseId));
+  visibleFindings.push(...validateActions(relevant));
+  if (visibleFindings.length) return freeze({ status: 'invalid', findings: visibleFindings });
   const byCategory = Object.fromEntries(categories.map(category => [category, visible.filter(record => record.category === category).length]));
   const notAssessed = visible.filter(record => record.assessmentStatus === 'Not assessed').length;
   const assessed = visible.length - notAssessed;
@@ -89,7 +78,6 @@ export function buildDashboardSnapshot(scope, records, actions, context) {
   if (risk === null || risk?.conflict) return freeze({ status: 'invalid', findings: [finding('RISK_LABEL_CONFLICT', 'The same risk outcome id has conflicting labels.', 'records')] });
 
   const actionSummary = scope.includeActionSummary ? (() => {
-    const relevant = actions.filter(action => visibleIds.has(action.aiUseId));
     const open = relevant.filter(action => action.status !== 'Complete');
     const overdue = open.filter(action => classifyActionTiming(action, context.asOfDate).timing === 'overdue').length;
     return {

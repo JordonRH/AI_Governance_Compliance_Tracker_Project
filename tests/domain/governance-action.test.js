@@ -72,7 +72,7 @@ test('controlled dates classify overdue, due-today, upcoming and complete action
   assert.deepEqual(classifyActionTiming(action, '2026-10-02'), { status: 'classified', timing: 'overdue', daysFromDueDate: -1 });
   assert.deepEqual(classifyActionTiming(action, '2026-10-01'), { status: 'classified', timing: 'due-today', daysFromDueDate: 0 });
   assert.deepEqual(classifyActionTiming(action, '2026-09-28'), { status: 'classified', timing: 'upcoming', daysFromDueDate: 3 });
-  const complete = updateGovernanceAction(action, { expectedVersion: 1, status: 'Complete' }, context).action;
+  const complete = updateGovernanceAction(action, { expectedVersion: 1, status: 'Complete' }, { ...context, timestamp: '2026-09-21T12:00:00.000Z' }).action;
   assert.deepEqual(classifyActionTiming(complete, '2026-10-02'), { status: 'classified', timing: 'complete', daysFromDueDate: null });
 });
 
@@ -80,4 +80,20 @@ test('creation rejects invalid links, dates, status and actor context', () => {
   const result = createGovernanceAction({ ...input, aiUseId: '', dueDate: 'not-a-date', status: 'Complete' }, { actorId: '', timestamp: 'bad' });
   assert.equal(result.status, 'invalid');
   assert.deepEqual(result.findings.map(item => item.code), ['INVALID_AI_USE_LINK', 'INVALID_DUE_DATE', 'INVALID_ACTOR', 'INVALID_TIMESTAMP', 'INVALID_INITIAL_STATUS']);
+});
+
+
+test('normalizes whitespace-only updates and rejects malformed current state or reversed time', () => {
+  const action = createdAction();
+  const unchanged = updateGovernanceAction(action, { expectedVersion: 1, owner: `  ${action.owner}  ` }, context);
+  assert.equal(unchanged.status, 'unchanged');
+  assert.equal(unchanged.action.history.length, 1);
+
+  const malformed = updateGovernanceAction({ ...action, status: 'Unknown' }, { expectedVersion: 1, owner: 'Changed' }, { ...context, timestamp: '2026-09-21T12:00:00.000Z' });
+  assert.equal(malformed.status, 'invalid');
+  assert.ok(malformed.findings.some(item => item.code === 'INVALID_CURRENT_ACTION'));
+
+  const reversed = updateGovernanceAction(action, { expectedVersion: 1, owner: 'Changed' }, context);
+  assert.equal(reversed.status, 'invalid');
+  assert.ok(reversed.findings.some(item => item.code === 'NON_MONOTONIC_TIMESTAMP'));
 });

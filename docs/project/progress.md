@@ -128,3 +128,10 @@ Issue #18 now has a pure reminder planner for action and policy-review due dates
 ## Scoped dashboard aggregation
 
 Issue #19 now has a pure dashboard snapshot builder. It filters records by an authorised institution/category scope before counting, distinguishes restricted summaries from zero, reconciles registry/category/assessment totals, groups visible risk outcomes and counts visible outstanding/overdue actions using a controlled date. Synthetic tests verify cross-institution isolation and filter boundaries. The existing UI remains an unauthenticated registry scaffold until approved roles, persisted assessments/actions and server-created scopes exist.
+
+
+## Pre-ticket-20 quality audit
+
+The domain foundations now share one validation utility. The audit also tightened risk-definition dates and typed rule operands, rejects malformed or conflicting action definitions without throwing, validates current governance-action state, treats whitespace-only updates as no-ops, requires advancing timestamps for material updates, and validates dashboard data only after authorised-scope filtering. The local API origin policy now requires the exact current HTTP origin, including its port.
+
+Verification passed with 44 Node tests, 7 Playwright tests, a production build, zero npm audit vulnerabilities and a clean Git diff check. Authentication, approved governance content, evidence storage and reminder delivery channels remain decision-gated.

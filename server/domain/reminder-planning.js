@@ -1,27 +1,7 @@
 import { createHash } from 'node:crypto';
+import { finding, freeze, isDateOnly as dateOnly, nonEmptyText as text } from './validation.js';
 
 const itemKinds = new Set(['action', 'policy-review']);
-
-function finding(code, message, path) {
-  return Object.freeze({ code, message, ...(path ? { path } : {}) });
-}
-
-function freeze(value) {
-  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
-  for (const child of Object.values(value)) freeze(child);
-  return Object.freeze(value);
-}
-
-function text(value, maximum = Infinity) {
-  return typeof value === 'string' && value.trim() !== '' && value.trim().length <= maximum;
-}
-
-function dateOnly(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
-}
-
 function policyFindings(policy) {
   const findings = [];
   if (!policy || typeof policy !== 'object' || Array.isArray(policy)) return [finding('INVALID_POLICY', 'Reminder policy must be an object.', 'policy')];

@@ -21,6 +21,7 @@ The first checkpoint delivered an initial React interface with a working Node.js
 | `server/domain/governance-action.js` | Pure action lifecycle, versioned history and due-date classification module |
 | `server/domain/reminder-planning.js` | Pure controlled-date reminder intent and idempotency planning module |
 | `server/domain/dashboard-summary.js` | Pure authorised-scope filtering and reconciled dashboard aggregation module |
+| `server/domain/validation.js` | Shared immutable findings, deep freezing, text, date and timestamp validation |
 | `tests/api/registry-api.test.js` | API behaviour and persistence checks |
 | `tests/domain/risk-scoring.test.js` | Synthetic scoring contracts, validation and deterministic trace checks |
 | `tests/domain/evidence-intake.test.js` | Synthetic evidence policy, type, size, signature and link validation checks |

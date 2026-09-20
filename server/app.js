@@ -38,7 +38,7 @@ export function createApp(db, http) {
     if (!req.headers.origin) return next();
     try {
       const origin = new URL(req.headers.origin);
-      if (['http:','https:'].includes(origin.protocol) && http.allowedHostnames.includes(origin.hostname.toLowerCase())) return next();
+      if (origin.protocol === 'http:' && origin.host.toLowerCase() === req.headers.host.toLowerCase() && http.allowedHostnames.includes(origin.hostname.toLowerCase())) return next();
     } catch {}
     res.status(403).json({ error: 'Origin is not allowed.' });
   });

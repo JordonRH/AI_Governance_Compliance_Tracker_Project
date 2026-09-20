@@ -64,3 +64,13 @@ test('controlled date changes overdue counts deterministically', () => {
   assert.equal(before.actions.overdue, 0);
   assert.equal(after.actions.overdue, 1);
 });
+
+
+test('malformed data outside the authorised scope cannot invalidate or leak into the snapshot', () => {
+  const outside = [...records, { id: '', institutionId: 'institution-b', category: 'Education', assessmentStatus: 'Unknown' }];
+  const outsideActions = [...actions, { id: '', aiUseId: 'b-hidden', status: 'Unknown', dueDate: 'invalid' }];
+  const result = buildDashboardSnapshot(scope, outside, outsideActions, context);
+  assert.equal(result.status, 'complete');
+  assert.equal(result.registry.total, 2);
+  assert.equal(result.actions.total, 2);
+});
