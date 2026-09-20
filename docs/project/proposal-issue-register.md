@@ -57,7 +57,7 @@ Drafted with generative AI assistance. The project team remains responsible for 
 ## Status audit — 20 September 2026
 
 - Ready for team review: #3, #4, #10 and #34.
-- Partial implementation or documentation: #1, #2, #5–#9, #11–#16, #19, #25–#29 and #32.
-- No verified material coverage yet: #17, #18, #20–#24, #30, #31 and #33.
+- Partial implementation or documentation: #1, #2, #5–#9, #11–#17, #19, #25–#29 and #32.
+- No verified material coverage yet: #18, #20–#24, #30, #31 and #33.
 
 All issues remain open. Labels indicate verified progress, not completion or sponsor acceptance. Evidence comments on each partial issue identify delivered work and remaining acceptance criteria.

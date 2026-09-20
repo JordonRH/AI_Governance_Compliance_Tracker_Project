@@ -18,9 +18,11 @@ The first checkpoint delivered an initial React interface with a working Node.js
 | `server/database.js` | SQLite connection and initial schema migration |
 | `server/domain/risk-scoring.js` | Pure deterministic evaluation, validation and explanation module |
 | `server/domain/evidence-intake.js` | Pure file-policy validation, digest and assessment-link descriptor module |
+| `server/domain/governance-action.js` | Pure action lifecycle, versioned history and due-date classification module |
 | `tests/api/registry-api.test.js` | API behaviour and persistence checks |
 | `tests/domain/risk-scoring.test.js` | Synthetic scoring contracts, validation and deterministic trace checks |
 | `tests/domain/evidence-intake.test.js` | Synthetic evidence policy, type, size, signature and link validation checks |
+| `tests/domain/governance-action.test.js` | Action lifecycle, concurrency, history and timing boundary checks |
 | `tests/e2e/registry.spec.js` | Browser workflow and responsive checks |
 | `tests/e2e/theme.spec.js` | Theme, record-detail and responsive browser checks |
 | `docs/project/` | Setup, design decisions, progress and review notes |
@@ -79,3 +81,5 @@ The proposed assessment seam is documented in `docs/design/governance-assessment
 Record names open a native read-only dialog showing the already-loaded record fields, dates and Not assessed status. Its explicit Edit record action opens the existing form. No database migration or governance rule is introduced.
 
 The proposed evidence intake seam is documented in `docs/design/policy-and-evidence-handling.md`. It validates candidate bytes against an approved versioned policy and returns a digest-bearing descriptor without writing or serving the file. Upload, retrieval, storage, malware controls and permissions remain deferred until their design and authentication dependencies are approved.
+
+The governance action seam is documented in `docs/design/governance-action-tracking.md`. It owns the three ticket-defined statuses, optimistic version checks, change history and controlled-date timing classification. Persistence, authenticated actor identity, permission checks, API routes and interface integration remain outside the module.

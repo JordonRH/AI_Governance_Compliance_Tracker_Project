@@ -116,3 +116,7 @@ The pure risk-scoring seam for issue #15 is implemented with synthetic test defi
 ## Evidence intake foundation
 
 Issue #16 now has a pure evidence-intake validation seam with synthetic tests. An approved versioned policy must explicitly allow the byte limit, media type, extension and leading file signature. Accepted output retains a SHA-256 digest and assessment/checklist-item link with pending review status. The module performs no storage, upload, retrieval, malware scanning or authorisation. Those acceptance criteria remain open pending the assessment model, authentication roles, storage decision, retention requirements and approved review metadata.
+
+## Governance action foundation
+
+Issue #17 now has a pure governance-action aggregate with owner, due date, Not Started/In Progress/Complete status, optimistic version checks, immutable material-change history and deterministic overdue classification from a caller-supplied date. Tests cover creation, editing, completion, reopening, conflicts, invalid dates, no-op changes and timing boundaries. Persistence, authenticated permissions, API/UI integration and approved transition restrictions remain open.
