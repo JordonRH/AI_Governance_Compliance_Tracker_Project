@@ -13,7 +13,7 @@ The requested checkpoint is an initial React UI with a working Node.js backend. 
 | #10 Repository and local development | Ready for review | npm scripts, React/Vite, Express, SQLite setup, API and browser checks, setup documentation | Team walkthrough and agreement on branching/review conventions; full architecture choices remain scoped to later tickets |
 | #12 AI registry | Partial implementation, awaiting review | Create, view, edit, validate and persist fictional AI uses | Authentication, approved access boundaries, approval status, agreed sensitivity fields and history |
 | #13 Categories | Partial implementation, awaiting review | Single Education/Administration/Research category, search and filtering | Confirm single versus multiple categories and review with the completed registry |
-| #19 Dashboards | Not started as a complete feature | Initial overview displays registry totals as part of the UI scaffold | Role-based visibility, assessed risk and action summaries |
+| #19 Dashboards | Partial domain implementation | Initial overview plus scope-first registry/risk/action aggregation with reconciled totals | Approved role-to-scope mapping, persisted risk/actions and authorised API/UI integration |
 
 Issues remain open where acceptance criteria are unmet. The limited initial build does not remove native dependencies or claim that upstream authentication and design tickets are complete. There is no claim of sponsor or team acceptance.
 
@@ -124,3 +124,7 @@ Issue #17 now has a pure governance-action aggregate with owner, due date, Not S
 ## Reminder planning foundation
 
 Issue #18 now has a pure reminder planner for action and policy-review due dates. Approved versioned rules define upcoming windows, due-today handling and repeatable overdue cadence. Closed items are excluded, invalid batches fail without a partial plan, and each deterministic intent has an idempotency key. No channel, recipient, scheduler or delivery claim is introduced; those remain open pending deployment, role and communication decisions.
+
+## Scoped dashboard aggregation
+
+Issue #19 now has a pure dashboard snapshot builder. It filters records by an authorised institution/category scope before counting, distinguishes restricted summaries from zero, reconciles registry/category/assessment totals, groups visible risk outcomes and counts visible outstanding/overdue actions using a controlled date. Synthetic tests verify cross-institution isolation and filter boundaries. The existing UI remains an unauthenticated registry scaffold until approved roles, persisted assessments/actions and server-created scopes exist.

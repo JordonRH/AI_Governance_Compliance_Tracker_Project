@@ -20,11 +20,13 @@ The first checkpoint delivered an initial React interface with a working Node.js
 | `server/domain/evidence-intake.js` | Pure file-policy validation, digest and assessment-link descriptor module |
 | `server/domain/governance-action.js` | Pure action lifecycle, versioned history and due-date classification module |
 | `server/domain/reminder-planning.js` | Pure controlled-date reminder intent and idempotency planning module |
+| `server/domain/dashboard-summary.js` | Pure authorised-scope filtering and reconciled dashboard aggregation module |
 | `tests/api/registry-api.test.js` | API behaviour and persistence checks |
 | `tests/domain/risk-scoring.test.js` | Synthetic scoring contracts, validation and deterministic trace checks |
 | `tests/domain/evidence-intake.test.js` | Synthetic evidence policy, type, size, signature and link validation checks |
 | `tests/domain/governance-action.test.js` | Action lifecycle, concurrency, history and timing boundary checks |
 | `tests/domain/reminder-planning.test.js` | Reminder windows, cadence, ordering and repeated-run checks |
+| `tests/domain/dashboard-summary.test.js` | Scope isolation, restricted-state and total-reconciliation checks |
 | `tests/e2e/registry.spec.js` | Browser workflow and responsive checks |
 | `tests/e2e/theme.spec.js` | Theme, record-detail and responsive browser checks |
 | `docs/project/` | Setup, design decisions, progress and review notes |
@@ -87,3 +89,5 @@ The proposed evidence intake seam is documented in `docs/design/policy-and-evide
 The governance action seam is documented in `docs/design/governance-action-tracking.md`. It owns the three ticket-defined statuses, optimistic version checks, change history and controlled-date timing classification. Persistence, authenticated actor identity, permission checks, API routes and interface integration remain outside the module.
 
 The reminder planning seam is documented in `docs/design/reminder-planning.md`. It creates channel-neutral reminder intents from approved timing rules and a controlled date. Scheduling, recipient resolution, delivery adapters, retries and delivery history remain outside the pure module.
+
+The dashboard summary seam is documented in `docs/design/dashboard-summary.md`. It applies a server-authorised institution/category scope before aggregating registry, risk and action counts, and marks unavailable capabilities as restricted. Role-to-scope mapping, persisted assessment/action sources, API routes and interface integration remain deferred.

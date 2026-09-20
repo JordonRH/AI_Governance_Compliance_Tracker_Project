@@ -35,6 +35,7 @@ Research documents are review inputs. They do not establish sponsor policy, lega
 - [Policy and evidence handling](design/policy-and-evidence-handling.md): implemented intake-validation seam and unresolved storage, retrieval and permission decisions.
 - [Governance action tracking](design/governance-action-tracking.md): implemented action lifecycle/history seam and unresolved persistence and permission decisions.
 - [Reminder planning](design/reminder-planning.md): implemented channel-neutral timing/idempotency seam and unresolved scheduling and delivery decisions.
+- [Scoped dashboard summary](design/dashboard-summary.md): implemented scope-first aggregation and unresolved role/API/UI decisions.
 
 ## Repository cadence
 
