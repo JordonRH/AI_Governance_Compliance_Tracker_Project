@@ -32,12 +32,14 @@ Research documents are review inputs. They do not establish sponsor policy, lega
 - [Explainable risk-scoring module](design/risk-scoring-module.md): proposed module seam, contracts, invariants, persistence boundaries and test strategy without unapproved rule content.
 - [Authentication and authorisation](design/authentication-and-authorization.md): proposed request identity seam, deny-by-default permissions, server-side sessions and implementation decisions.
 - [Governance assessment module](design/governance-assessment-module.md): proposed questionnaire lifecycle, immutable submission, validation and scoring handoff without unapproved question content.
+- [Policy and evidence handling](design/policy-and-evidence-handling.md): implemented intake-validation seam and unresolved storage, retrieval and permission decisions.
 
 ## Repository cadence
 
 - `src/`: React application source.
 - `server/`: Express API, server startup and SQLite access.
 - `tests/api/`: API and persistence tests.
+- `tests/domain/`: pure domain contract and boundary tests.
 - `tests/e2e/`: Playwright browser tests.
 - `docs/research/`: reviewed research baselines and candidate mappings.
 - `docs/design/`: technical designs that depend on recorded decisions before implementation.

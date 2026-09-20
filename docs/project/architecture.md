@@ -17,8 +17,10 @@ The first checkpoint delivered an initial React interface with a working Node.js
 | `server/app.js` | JSON API, input validation and registry operations |
 | `server/database.js` | SQLite connection and initial schema migration |
 | `server/domain/risk-scoring.js` | Pure deterministic evaluation, validation and explanation module |
+| `server/domain/evidence-intake.js` | Pure file-policy validation, digest and assessment-link descriptor module |
 | `tests/api/registry-api.test.js` | API behaviour and persistence checks |
 | `tests/domain/risk-scoring.test.js` | Synthetic scoring contracts, validation and deterministic trace checks |
+| `tests/domain/evidence-intake.test.js` | Synthetic evidence policy, type, size, signature and link validation checks |
 | `tests/e2e/registry.spec.js` | Browser workflow and responsive checks |
 | `tests/e2e/theme.spec.js` | Theme, record-detail and responsive browser checks |
 | `docs/project/` | Setup, design decisions, progress and review notes |
@@ -64,7 +66,7 @@ Authentication/RBAC, governance rules, assessments, approval workflows, actions,
 
 Before implementing the rules engine, agree the governing sources, questions, thresholds and terminology. A future assessment should retain its rule version and explain its result. This document records that design direction without selecting a governance framework.
 
-The proposed scoring seam is documented in `docs/design/risk-scoring-module.md`. It uses a pure `evaluateAssessment(definition, responses, context)` interface so deterministic validation, evaluation and explanation stay in one deep module. Database and HTTP adapters remain outside that seam. No scoring module or assessment schema exists yet because rule content and governance decisions are unapproved.
+The proposed scoring seam is documented in `docs/design/risk-scoring-module.md`. It uses a pure `evaluateAssessment(definition, responses, context)` interface so deterministic validation, evaluation and explanation stay in one deep module. Database and HTTP adapters remain outside that seam. The pure scoring module now exists, but it has no authorised rule content and is not connected to assessment persistence, API routes or the interface.
 
 The proposed authentication seam is documented in `docs/design/authentication-and-authorization.md`. It separates request authentication from action/resource authorisation and denies protected routes by default. The design recommends opaque server-side sessions rather than browser storage. No account/session schema or route exists because roles, account bootstrap, password policy, session lifetime and password-hashing technology still require approval.
 
@@ -75,3 +77,5 @@ The proposed assessment seam is documented in `docs/design/governance-assessment
 `src/themes.css` contains temporary theme overrides and detail-view layout. Theme state is a browser preference, independent of registry data and server permissions. Optional localStorage reads and writes are guarded so storage restrictions do not prevent application use.
 
 Record names open a native read-only dialog showing the already-loaded record fields, dates and Not assessed status. Its explicit Edit record action opens the existing form. No database migration or governance rule is introduced.
+
+The proposed evidence intake seam is documented in `docs/design/policy-and-evidence-handling.md`. It validates candidate bytes against an approved versioned policy and returns a digest-bearing descriptor without writing or serving the file. Upload, retrieval, storage, malware controls and permissions remain deferred until their design and authentication dependencies are approved.
