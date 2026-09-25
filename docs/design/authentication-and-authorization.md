@@ -2,7 +2,7 @@
 
 Status: Partial design for GitHub issue #11
 Prepared: 20 September 2026
-Decision state: Security seam and recommended local-prototype mechanism proposed; roles and account workflow are unapproved.
+Decision state: Security seam and local-prototype mechanism proposed; capstone role labels are confirmed, while permissions and account workflow require implementation decisions.
 
 ## Scope
 
@@ -29,7 +29,7 @@ All protected routes must use common middleware at this seam. New routes are den
 
 Store account identity, login identifier, display name, role identifier, password-hash parameters, lifecycle state and timestamps in SQLite. Store no plaintext or reversibly encrypted password.
 
-The proposal suggests Administrator, Compliance/Governance Officer and Faculty/Staff User, but says the names require sponsor confirmation. Use stable internal role identifiers only after the access matrix is approved; keep display labels configurable.
+The capstone baseline requires Administrator, Compliance Officer and Staff User. Use stable internal identifiers `administrator`, `compliance_officer` and `staff_user`; map permissions to actions and resources rather than scattering role-name comparisons across routes.
 
 ### Password hashing
 
@@ -132,7 +132,7 @@ Browser checks must cover keyboard-accessible login, clear session state, logout
 
 ## Decisions required before implementation
 
-1. Confirm role names and the permission/resource matrix.
+1. Approve the permission/resource matrix for the confirmed Administrator, Compliance Officer and Staff User roles.
 2. Decide whether accounts are invited, administered, self-registered or pre-seeded for demonstration.
 3. Decide how the first administrator is created without a committed default password.
 4. Approve login identifier requirements and password policy.

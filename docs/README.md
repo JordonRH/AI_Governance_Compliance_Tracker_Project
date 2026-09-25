@@ -7,6 +7,7 @@ AITrace documentation follows a simple folder cadence so working guidance and or
 - [Architecture](project/architecture.md): application boundaries, structure, API and design decisions.
 - [Local development](project/development.md): setup, commands, data handling and troubleshooting.
 - [Development progress](project/progress.md): delivered work, verification and contribution record.
+- [Capstone requirements traceability](project/capstone-requirements-traceability.md): source requirements mapped to tickets, evidence, gaps and next work.
 - [Proposal issue register](project/proposal-issue-register.md): mapping between proposal WBS activities and GitHub issues.
 
 ## Source materials

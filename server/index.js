@@ -5,12 +5,17 @@ import { existsSync } from 'node:fs';
 import express from 'express';
 import { openDatabase } from './database.js';
 import { createApp } from './app.js';
+import { createAccount } from './auth.js';
 import { loadConfig } from './config.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const config = loadConfig({ rootDir: root });
 if (config.production && !existsSync(resolve(config.paths.distribution, 'index.html'))) throw new Error('Run npm run build before npm run start.');
 const db = openDatabase(config.paths.database);
+if (process.env.AITRACE_BOOTSTRAP_LOGIN && !db.prepare('SELECT 1 FROM accounts WHERE login=?').get(process.env.AITRACE_BOOTSTRAP_LOGIN.toLowerCase())) {
+  await createAccount(db, { organizationId: process.env.AITRACE_BOOTSTRAP_ORGANIZATION_ID || 'local-demo-sme', organizationName: process.env.AITRACE_BOOTSTRAP_ORGANIZATION_NAME || 'Local demonstration SME', login: process.env.AITRACE_BOOTSTRAP_LOGIN, displayName: process.env.AITRACE_BOOTSTRAP_DISPLAY_NAME || 'Local Administrator', role: 'administrator', password: process.env.AITRACE_BOOTSTRAP_PASSWORD });
+}
+delete process.env.AITRACE_BOOTSTRAP_PASSWORD;
 const app = createApp(db, config.http);
 const server = createServer(app);
 let vite;

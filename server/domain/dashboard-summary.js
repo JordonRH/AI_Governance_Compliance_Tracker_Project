@@ -1,13 +1,12 @@
 import { classifyActionTiming } from './governance-action.js';
 import { finding, freeze, isDateOnly as dateOnly, nonEmptyText as text } from './validation.js';
 
-const categories = Object.freeze(['Education', 'Administration', 'Research']);
 function validateScope(scope) {
   const findings = [];
   if (!scope || typeof scope !== 'object' || Array.isArray(scope)) return [finding('INVALID_SCOPE', 'Dashboard scope must be an object.', 'scope')];
   if (!text(scope.id)) findings.push(finding('INVALID_SCOPE_ID', 'A stable authorised scope id is required.', 'scope.id'));
   if (!Array.isArray(scope.institutionIds) || scope.institutionIds.length === 0 || new Set(scope.institutionIds).size !== scope.institutionIds.length || scope.institutionIds.some(id => !text(id))) findings.push(finding('INVALID_INSTITUTION_SCOPE', 'At least one unique institution id is required.', 'scope.institutionIds'));
-  if (!Array.isArray(scope.categories) || scope.categories.length === 0 || new Set(scope.categories).size !== scope.categories.length || scope.categories.some(category => !categories.includes(category))) findings.push(finding('INVALID_CATEGORY_SCOPE', 'Scope categories must be unique supported categories.', 'scope.categories'));
+  if (!Array.isArray(scope.categories) || scope.categories.length === 0 || new Set(scope.categories).size !== scope.categories.length || scope.categories.some(category => !text(category))) findings.push(finding('INVALID_CATEGORY_SCOPE', 'Scope categories must be unique supported categories.', 'scope.categories'));
   if (typeof scope.includeRiskSummary !== 'boolean') findings.push(finding('INVALID_RISK_CAPABILITY', 'includeRiskSummary must be boolean.', 'scope.includeRiskSummary'));
   if (typeof scope.includeActionSummary !== 'boolean') findings.push(finding('INVALID_ACTION_CAPABILITY', 'includeActionSummary must be boolean.', 'scope.includeActionSummary'));
   return findings;
@@ -21,7 +20,7 @@ function validateRecords(records) {
     if (!text(record?.id) || ids.has(record.id)) findings.push(finding('INVALID_RECORD_ID', 'Record ids must be present and unique.', `${path}.id`));
     else ids.add(record.id);
     if (!text(record?.institutionId)) findings.push(finding('INVALID_RECORD_INSTITUTION', 'Record institution id is required.', `${path}.institutionId`));
-    if (!categories.includes(record?.category)) findings.push(finding('INVALID_RECORD_CATEGORY', 'Record category is unsupported.', `${path}.category`));
+    if (!text(record?.category)) findings.push(finding('INVALID_RECORD_CATEGORY', 'Record category is unsupported.', `${path}.category`));
     if (!['Not assessed', 'Assessed'].includes(record?.assessmentStatus)) findings.push(finding('INVALID_ASSESSMENT_STATUS', 'Assessment status must be Not assessed or Assessed.', `${path}.assessmentStatus`));
     if (record?.assessmentStatus === 'Assessed' && (!text(record?.riskOutcome?.id) || !text(record?.riskOutcome?.label))) findings.push(finding('MISSING_RISK_OUTCOME', 'Assessed records require a risk outcome id and label.', `${path}.riskOutcome`));
     if (record?.assessmentStatus === 'Not assessed' && record?.riskOutcome !== undefined) findings.push(finding('UNEXPECTED_RISK_OUTCOME', 'Not assessed records must not include a risk outcome.', `${path}.riskOutcome`));
@@ -48,7 +47,6 @@ export function buildDashboardSnapshot(scope, records, actions, context) {
   if (!Array.isArray(records)) findings.push(finding('INVALID_RECORDS', 'Registry records must be an array.', 'records'));
   if (!Array.isArray(actions)) findings.push(finding('INVALID_ACTIONS', 'Actions must be an array.', 'actions'));
   if (!dateOnly(context?.asOfDate)) findings.push(finding('INVALID_AS_OF_DATE', 'asOfDate must be a real YYYY-MM-DD date.', 'context.asOfDate'));
-  if (context?.category !== undefined && !categories.includes(context.category)) findings.push(finding('INVALID_CATEGORY_FILTER', 'Category filter is unsupported.', 'context.category'));
   if (context?.category !== undefined && Array.isArray(scope?.categories) && !scope.categories.includes(context.category)) findings.push(finding('CATEGORY_OUTSIDE_SCOPE', 'Category filter is outside the authorised scope.', 'context.category'));
   if (findings.length) return freeze({ status: 'invalid', findings });
 
@@ -60,7 +58,7 @@ export function buildDashboardSnapshot(scope, records, actions, context) {
   const relevant = actions.filter(action => visibleIds.has(action?.aiUseId));
   visibleFindings.push(...validateActions(relevant));
   if (visibleFindings.length) return freeze({ status: 'invalid', findings: visibleFindings });
-  const byCategory = Object.fromEntries(categories.map(category => [category, visible.filter(record => record.category === category).length]));
+  const byCategory = Object.fromEntries(scope.categories.map(category => [category, visible.filter(record => record.category === category).length]));
   const notAssessed = visible.filter(record => record.assessmentStatus === 'Not assessed').length;
   const assessed = visible.length - notAssessed;
 

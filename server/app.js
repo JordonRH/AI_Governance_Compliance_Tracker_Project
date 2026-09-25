@@ -1,28 +1,60 @@
 import { randomUUID } from 'node:crypto';
 import express from 'express';
+import { expiredSessionCookie, hasPermission, login, resolveRequestPrincipal, revokeRequestSession, sessionCookie } from './auth.js';
 import { isAllowedHostHeader } from './config.js';
+import { buildDashboardSnapshot } from './domain/dashboard-summary.js';
+import { createGovernanceAction, updateGovernanceAction } from './domain/governance-action.js';
+import { planReminders } from './domain/reminder-planning.js';
 
-const categories = ['Education', 'Administration', 'Research'];
-const limits = { name: 120, owner: 120, purpose: 2000, dataDescription: 1000 };
+
+const limits = { name: 120, owner: 120, businessArea: 120, purpose: 2000, dataDescription: 1000, dataSensitivity: 80, approvalStatus: 80 };
 const samples = [
-  ['Fictional student support assistant','Fictional learning team','Education','Demonstrate an AI-assisted student support use case.','Synthetic questions and fictional course information only.'],
-  ['Fictional timetable helper','Fictional operations team','Administration','Demonstrate assistance with fictional timetable enquiries.','Synthetic timetable records only.'],
-  ['Fictional literature explorer','Fictional research team','Research','Demonstrate exploration of synthetic research topics.','Fictional prompts and public sample metadata only.']
+  ['Fictional customer enquiry assistant','Fictional service team','Customer service','Demonstrate an AI-assisted customer enquiry use case.','Synthetic questions and fictional product information only.','Public demo data'],
+  ['Fictional invoice helper','Fictional finance team','Finance','Demonstrate assistance with fictional invoice classification.','Synthetic invoice records only.','Confidential'],
+  ['Fictional product research helper','Fictional product team','Product development','Demonstrate exploration of fictional market topics.','Public sample material and synthetic prompts only.','Public demo data']
 ];
-const map = row => ({ id: row.id, name: row.name, purpose: row.purpose, owner: row.owner, category: row.category,
-  dataDescription: row.data_description, createdAt: row.created_at, updatedAt: row.updated_at, assessmentStatus: 'Not assessed' });
-function validate(body) {
+const selectFields = `id, organization_id, created_by_account_id, name, purpose, owner, business_area, data_description, data_sensitivity, approval_status, source, created_at, updated_at`;
+const map = row => ({ id: row.id, organizationId: row.organization_id, name: row.name, purpose: row.purpose, owner: row.owner,
+  businessArea: row.business_area, dataDescription: row.data_description, dataSensitivity: row.data_sensitivity,
+  approvalStatus: row.approval_status, source: row.source, createdAt: row.created_at, updatedAt: row.updated_at, assessmentStatus: 'Not assessed' });
+
+function validate(body, { shadow = false } = {}) {
   const errors = {};
   if (!body || typeof body !== 'object' || Array.isArray(body)) return { _request: 'A JSON object is required.' };
-  for (const [key, max] of Object.entries(limits)) {
+  const required = shadow ? ['name', 'businessArea', 'purpose', 'dataDescription', 'dataSensitivity'] : Object.keys(limits);
+  for (const key of required) {
+    const max = limits[key];
     if (typeof body[key] !== 'string' || !body[key].trim()) errors[key] = 'This field is required.';
     else if (body[key].trim().length > max) errors[key] = `Must be ${max} characters or fewer.`;
   }
-  if (!categories.includes(body.category)) errors.category = 'Choose a valid category.';
   return errors;
 }
-const clean = body => ({ name: body.name.trim(), owner: body.owner.trim(), category: body.category,
-  purpose: body.purpose.trim(), dataDescription: body.dataDescription.trim() });
+const clean = (body, defaults = {}) => Object.fromEntries(Object.keys(limits).map(key => [key, typeof body[key] === 'string' ? body[key].trim() : defaults[key]]));
+const csvCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
+function csv(records) {
+  const headings = ['Name','Purpose','Owner','Business area','Data sensitivity','Approval status','Assessment status','Source','Updated at'];
+  return [headings, ...records.map(record => [record.name,record.purpose,record.owner,record.businessArea,record.dataSensitivity,record.approvalStatus,record.assessmentStatus,record.source,record.updatedAt])]
+    .map(row => row.map(csvCell).join(',')).join('\r\n');
+}
+function pdfText(records, organizationName) {
+  const lines = [`AI governance compliance summary - ${organizationName}`, `Generated ${new Date().toISOString()}`, `Registered and disclosed AI uses: ${records.length}`, ''];
+  for (const record of records) lines.push(`${record.name} | ${record.businessArea} | ${record.dataSensitivity} | ${record.approvalStatus} | ${record.assessmentStatus}`);
+  const safe = lines.slice(0, 45).map(line => line.replaceAll('\\','\\\\').replaceAll('(','\\(').replaceAll(')','\\)').replace(/[^\x20-\x7E]/g,'?'));
+  const stream = ['BT','/F1 10 Tf','50 790 Td',...safe.flatMap((line,index) => index ? ['0 -16 Td',`(${line}) Tj`] : [`(${line}) Tj`]),'ET'].join('\n');
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
+  ];
+  let output='%PDF-1.4\n', offsets=[0];
+  objects.forEach((object,index)=>{offsets.push(Buffer.byteLength(output));output+=`${index+1} 0 obj\n${object}\nendobj\n`;});
+  const xref=Buffer.byteLength(output); output+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++) output+=`${String(offsets[i]).padStart(10,'0')} 00000 n \n`;
+  output+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(output);
+}
 
 export function createApp(db, http) {
   if (!db || !http?.allowedHostnames || !http?.requestBodyLimitBytes) throw new Error('Database and HTTP configuration are required.');
@@ -52,50 +84,127 @@ export function createApp(db, http) {
     if (['POST','PUT','PATCH'].includes(req.method) && !req.is('application/json')) return res.status(415).json({ error: 'Content-Type must be application/json.' });
     next();
   });
+  app.use('/api', (req, _res, next) => { req.principal = resolveRequestPrincipal(db, req); next(); });
+  const requirePermission = permission => (req, res, next) => {
+    if (!req.principal) return res.status(401).json({ error: 'Authentication is required.' });
+    if (!hasPermission(req.principal, permission)) return res.status(403).json({ error: 'You do not have permission for this action.' });
+    next();
+  };
+
   app.get('/api/health', (_req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', mode: 'local-prototype' }); });
-  app.get('/api/registry', (req, res) => {
-    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    const category = typeof req.query.category === 'string' ? req.query.category : '';
-    if (category && !categories.includes(category)) return res.status(400).json({ error: 'Choose a valid category.' });
-    const conditions = [], values = [];
-    if (q) { conditions.push('(name LIKE ? OR owner LIKE ? OR purpose LIKE ?)'); values.push(`%${q}%`, `%${q}%`, `%${q}%`); }
-    if (category) { conditions.push('category = ?'); values.push(category); }
-    const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
-    res.json({ records: db.prepare(`SELECT * FROM ai_uses${where} ORDER BY updated_at DESC, id DESC`).all(...values).map(map) });
+  app.get('/api/auth/session', (req, res) => res.json({ principal: req.principal }));
+  app.post('/api/auth/login', async (req, res, next) => {
+    try {
+      const result = await login(db, req.body?.login, req.body?.password);
+      if (!result) return res.status(401).json({ error: 'Login was not accepted.' });
+      res.setHeader('Set-Cookie', sessionCookie(result.token, result.expiresAt));
+      res.json({ principal: result.principal });
+    } catch (error) { next(error); }
   });
-  app.get('/api/registry/:id', (req, res) => {
-    const row = db.prepare('SELECT * FROM ai_uses WHERE id = ?').get(req.params.id);
+  app.post('/api/auth/logout', (req, res) => {
+    revokeRequestSession(db, req);
+    res.setHeader('Set-Cookie', expiredSessionCookie());
+    res.json({ status: 'signed-out' });
+  });
+
+  app.get('/api/registry', requirePermission('registry:read'), (req, res) => {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const businessArea = typeof req.query.businessArea === 'string' ? req.query.businessArea.trim() : '';
+    const conditions = ['organization_id = ?'], values = [req.principal.organizationId];
+    if (q) { conditions.push('(name LIKE ? OR owner LIKE ? OR purpose LIKE ?)'); values.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+    if (businessArea) { conditions.push('business_area = ?'); values.push(businessArea); }
+    res.json({ records: db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE ${conditions.join(' AND ')} ORDER BY updated_at DESC, id DESC`).all(...values).map(map) });
+  });
+  app.get('/api/registry/:id', requirePermission('registry:read'), (req, res) => {
+    const row = db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE id=? AND organization_id=?`).get(req.params.id, req.principal.organizationId);
     row ? res.json(map(row)) : res.status(404).json({ error: 'AI use was not found.' });
   });
-  app.post('/api/registry', (req, res) => {
+  app.post('/api/registry', requirePermission('registry:create'), (req, res) => {
     const errors = validate(req.body);
     if (Object.keys(errors).length) return res.status(400).json({ error: 'Check the highlighted fields.', fields: errors });
     const value = clean(req.body), id = randomUUID(), now = new Date().toISOString();
-    db.prepare('INSERT INTO ai_uses VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(id,value.name,value.purpose,value.owner,value.category,value.dataDescription,now,now);
-    res.status(201).json(map(db.prepare('SELECT * FROM ai_uses WHERE id = ?').get(id)));
+    db.prepare(`INSERT INTO ai_uses VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'registry', ?, ?)`)
+      .run(id,req.principal.organizationId,req.principal.accountId,value.name,value.purpose,value.owner,value.businessArea,value.dataDescription,value.dataSensitivity,value.approvalStatus,now,now);
+    res.status(201).json(map(db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE id=?`).get(id)));
   });
-  app.put('/api/registry/:id', (req, res) => {
-    if (!db.prepare('SELECT 1 FROM ai_uses WHERE id = ?').get(req.params.id)) return res.status(404).json({ error: 'AI use was not found.' });
+  app.put('/api/registry/:id', requirePermission('registry:update'), (req, res) => {
+    const row = db.prepare('SELECT created_by_account_id FROM ai_uses WHERE id=? AND organization_id=?').get(req.params.id, req.principal.organizationId);
+    if (!row) return res.status(404).json({ error: 'AI use was not found.' });
     const errors = validate(req.body);
     if (Object.keys(errors).length) return res.status(400).json({ error: 'Check the highlighted fields.', fields: errors });
     const value = clean(req.body), now = new Date().toISOString();
-    db.prepare('UPDATE ai_uses SET name=?, purpose=?, owner=?, category=?, data_description=?, updated_at=? WHERE id=?')
-      .run(value.name,value.purpose,value.owner,value.category,value.dataDescription,now,req.params.id);
-    res.json(map(db.prepare('SELECT * FROM ai_uses WHERE id = ?').get(req.params.id)));
+    db.prepare(`UPDATE ai_uses SET name=?,purpose=?,owner=?,business_area=?,data_description=?,data_sensitivity=?,approval_status=?,updated_at=? WHERE id=? AND organization_id=?`)
+      .run(value.name,value.purpose,value.owner,value.businessArea,value.dataDescription,value.dataSensitivity,value.approvalStatus,now,req.params.id,req.principal.organizationId);
+    res.json(map(db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE id=?`).get(req.params.id)));
   });
-  app.post('/api/examples', (_req, res) => {
-    const exists = db.prepare('SELECT 1 FROM ai_uses WHERE name = ?'), insert = db.prepare('INSERT INTO ai_uses VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-    let added = 0;
-    for (const [name,owner,category,purpose,data] of samples) if (!exists.get(name)) {
-      const now = new Date().toISOString(); insert.run(randomUUID(),name,purpose,owner,category,data,now,now); added++;
+  app.post('/api/shadow-reports', requirePermission('shadow:create'), (req, res) => {
+    const errors = validate(req.body, { shadow: true });
+    if (Object.keys(errors).length) return res.status(400).json({ error: 'Check the highlighted fields.', fields: errors });
+    const value = clean(req.body, { owner: req.principal.displayName, approvalStatus: 'Not reviewed' }), id=randomUUID(), now=new Date().toISOString();
+    db.prepare(`INSERT INTO ai_uses VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'shadow-report', ?, ?)`)
+      .run(id,req.principal.organizationId,req.principal.accountId,value.name,value.purpose,value.owner,value.businessArea,value.dataDescription,value.dataSensitivity,'Not reviewed',now,now);
+    res.status(201).json({ status: 'reported', record: map(db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE id=?`).get(id)) });
+  });
+  app.post('/api/examples', requirePermission('registry:create'), (_req, res) => {
+    const exists = db.prepare('SELECT 1 FROM ai_uses WHERE organization_id=? AND name=?'), insert = db.prepare(`INSERT INTO ai_uses VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'registry', ?, ?)`);
+    let added=0;
+    for(const [name,owner,area,purpose,data,sensitivity] of samples) if(!exists.get(_req.principal.organizationId,name)){
+      const now=new Date().toISOString();insert.run(randomUUID(),_req.principal.organizationId,_req.principal.accountId,name,purpose,owner,area,data,sensitivity,'Not reviewed',now,now);added++;
     }
-    res.json({ added });
+    res.json({added});
   });
-  app.get('/api/overview', (_req, res) => {
-    const total = db.prepare('SELECT COUNT(*) count FROM ai_uses').get().count;
-    const byCategory = Object.fromEntries(categories.map(name => [name, 0]));
-    for (const row of db.prepare('SELECT category, COUNT(*) count FROM ai_uses GROUP BY category').all()) byCategory[row.category] = row.count;
-    res.json({ total, unassessed: total, byCategory });
+  app.get('/api/overview', requirePermission('registry:read'), (req, res) => {
+    const total=db.prepare('SELECT COUNT(*) count FROM ai_uses WHERE organization_id=?').get(req.principal.organizationId).count;
+    const byBusinessArea={};for(const row of db.prepare('SELECT business_area,COUNT(*) count FROM ai_uses WHERE organization_id=? GROUP BY business_area').all(req.principal.organizationId))byBusinessArea[row.business_area]=row.count;
+    res.json({total,unassessed:total,byBusinessArea});
+  });
+
+  const actionFromRow = row => ({ id:row.id, aiUseId:row.ai_use_id, ...(row.assessment_id?{assessmentId:row.assessment_id}:{}), title:row.title, owner:row.owner, dueDate:row.due_date, status:row.status, version:row.version, createdAt:row.created_at, updatedAt:row.updated_at, completedAt:row.completed_at, history:JSON.parse(row.history_json) });
+
+  app.get('/api/actions', requirePermission('registry:read'), (req,res)=>{
+    const rows=db.prepare('SELECT * FROM governance_actions WHERE organization_id=? ORDER BY due_date,id').all(req.principal.organizationId);
+    res.json({actions:rows.map(actionFromRow)});
+  });
+  app.post('/api/actions', requirePermission('action:manage'), (req,res)=>{
+    if(!db.prepare('SELECT 1 FROM ai_uses WHERE id=? AND organization_id=?').get(req.body?.aiUseId,req.principal.organizationId)) return res.status(400).json({error:'A visible AI use is required.'});
+    const result=createGovernanceAction({...req.body,id:randomUUID()},{actorId:req.principal.accountId,timestamp:new Date().toISOString()});
+    if(result.status==='invalid') return res.status(400).json({error:'Check the action fields.',findings:result.findings});
+    const action=result.action;
+    db.prepare(`INSERT INTO governance_actions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(action.id,req.principal.organizationId,action.aiUseId,action.assessmentId??null,action.title,action.owner,action.dueDate,action.status,action.version,action.createdAt,action.updatedAt,action.completedAt,JSON.stringify(action.history));
+    res.status(201).json(action);
+  });
+  app.put('/api/actions/:id', requirePermission('action:manage'), (req,res)=>{
+    const row=db.prepare('SELECT * FROM governance_actions WHERE id=? AND organization_id=?').get(req.params.id,req.principal.organizationId);
+    if(!row) return res.status(404).json({error:'Governance action was not found.'});
+    const result=updateGovernanceAction(actionFromRow(row),req.body,{actorId:req.principal.accountId,timestamp:new Date().toISOString()});
+    if(result.status==='invalid') return res.status(400).json({error:'Check the action update.',findings:result.findings});
+    if(result.status==='unchanged') return res.json(result.action);
+    const action=result.action;
+    db.prepare(`UPDATE governance_actions SET title=?,owner=?,due_date=?,status=?,version=?,updated_at=?,completed_at=?,history_json=? WHERE id=? AND organization_id=?`).run(action.title,action.owner,action.dueDate,action.status,action.version,action.updatedAt,action.completedAt,JSON.stringify(action.history),action.id,req.principal.organizationId);
+    res.json(action);
+  });
+  app.post('/api/reminders/plan', requirePermission('action:manage'), (req,res)=>{
+    const items=db.prepare('SELECT id,due_date,status FROM governance_actions WHERE organization_id=?').all(req.principal.organizationId).map(row=>({id:row.id,kind:'action',dueDate:row.due_date,isClosed:row.status==='Complete'}));
+    const result=planReminders(req.body?.policy,items,req.body?.context);
+    res.status(result.status==='invalid'?400:200).json(result);
+  });
+  app.get('/api/dashboard', requirePermission('registry:read'), (req,res)=>{
+    const registry=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=?`).all(req.principal.organizationId).map(map);
+    const areas=[...new Set(registry.map(record=>record.businessArea))].sort();
+    if(areas.length===0) return res.json({status:'complete',scopeId:req.principal.organizationId,filter:{category:null,asOfDate:req.query.asOfDate||new Date().toISOString().slice(0,10)},registry:{total:0,assessed:0,notAssessed:0,byCategory:{}},risk:{status:'available',total:0,byOutcome:[]},actions:{status:'available',total:0,outstanding:0,overdue:0,byStatus:{'Not Started':0,'In Progress':0,Complete:0}}});
+    const records=registry.map(record=>({id:record.id,institutionId:record.organizationId,category:record.businessArea,assessmentStatus:record.assessmentStatus}));
+    const actions=db.prepare('SELECT * FROM governance_actions WHERE organization_id=?').all(req.principal.organizationId).map(actionFromRow);
+    const snapshot=buildDashboardSnapshot({id:req.principal.organizationId,institutionIds:[req.principal.organizationId],categories:areas,includeRiskSummary:true,includeActionSummary:true},records,actions,{asOfDate:req.query.asOfDate||new Date().toISOString().slice(0,10)});
+    res.status(snapshot.status==='invalid'?400:200).json(snapshot);
+  });
+
+  app.get('/api/reports/compliance.csv', requirePermission('report:export'), (req,res)=>{
+    const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map);
+    res.type('text/csv').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.csv"').send(csv(records));
+  });
+  app.get('/api/reports/compliance.pdf', requirePermission('report:export'), (req,res)=>{
+    const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map);
+    res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.pdf"').send(pdfText(records,req.principal.organizationName));
   });
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API route was not found.' }));
   return app;

@@ -4,41 +4,47 @@ import { createServer, request as httpRequest } from 'node:http';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createAccount } from '../../server/auth.js';
 import { openDatabase } from '../../server/database.js';
 import { createApp } from '../../server/app.js';
 
-const directory = mkdtempSync(join(tmpdir(), 'aitrace-api-')), filename = join(directory, 'registry.sqlite');
-const http = { requestBodyLimitBytes: 32768, allowedHostnames: ['127.0.0.1', 'localhost'] };
-let db, server, base;
-before(async () => { db = openDatabase(filename); server = createServer(createApp(db,http)); await new Promise(ok => server.listen(0,'127.0.0.1',ok)); base = `http://127.0.0.1:${server.address().port}`; });
-after(async () => { await new Promise(ok => server.close(ok)); db.close(); rmSync(directory,{recursive:true,force:true}); });
-async function api(path, options={}) { const response = await fetch(base+path,options); return { response, body: await response.json() }; }
-function statusWithHost(host) { return new Promise((resolve, reject) => { const target = new URL('/api/health', base); const request = httpRequest({ hostname: target.hostname, port: target.port, path: target.pathname, headers: { Host: host } }, response => { response.resume(); response.on('end', () => resolve(response.statusCode)); }); request.on('error', reject); request.end(); }); }
-const valid = { name:'Fictional AI helper', owner:'Fictional team', category:'Education', purpose:'Demonstrate registry behaviour.', dataDescription:'Synthetic data only.' };
+const directory=mkdtempSync(join(tmpdir(),'aitrace-api-')),filename=join(directory,'registry.sqlite');
+const http={requestBodyLimitBytes:32768,allowedHostnames:['127.0.0.1','localhost']};
+let db,server,base,adminCookie,staffCookie,otherCookie;
+before(async()=>{db=openDatabase(filename);
+ await createAccount(db,{organizationId:'sme-a',organizationName:'Fictional SME A',login:'admin@example.test',displayName:'Fictional Admin',role:'administrator',password:'correct horse battery'});
+ await createAccount(db,{organizationId:'sme-a',organizationName:'Fictional SME A',login:'staff@example.test',displayName:'Fictional Staff',role:'staff_user',password:'correct horse battery'});
+ await createAccount(db,{organizationId:'sme-b',organizationName:'Fictional SME B',login:'other@example.test',displayName:'Other Admin',role:'administrator',password:'correct horse battery'});
+ server=createServer(createApp(db,http));await new Promise(ok=>server.listen(0,'127.0.0.1',ok));base=`http://127.0.0.1:${server.address().port}`;
+ adminCookie=await signIn('admin@example.test');staffCookie=await signIn('staff@example.test');otherCookie=await signIn('other@example.test');
+});
+after(async()=>{await new Promise(ok=>server.close(ok));db.close();rmSync(directory,{recursive:true,force:true});});
+async function api(path,options={}){const response=await fetch(base+path,options);const type=response.headers.get('content-type')||'';return{response,body:type.includes('json')?await response.json():await response.arrayBuffer()};}
+async function signIn(login){const result=await api('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,password:'correct horse battery'})});assert.equal(result.response.status,200);return result.response.headers.get('set-cookie').split(';')[0];}
+const auth=(cookie,method='GET',body)=>({method,headers:{Cookie:cookie,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
+const valid={name:'Fictional AI helper',owner:'Fictional team',businessArea:'Customer service',purpose:'Demonstrate registry behaviour.',dataDescription:'Synthetic data only.',dataSensitivity:'Public',approvalStatus:'Not reviewed'};
 
-test('health and empty registry', async () => {
-  assert.deepEqual((await api('/api/health')).body,{status:'ok',mode:'local-prototype'});
-  assert.deepEqual((await api('/api/registry')).body,{records:[]});
+test('health is public while organisation records require authentication',async()=>{assert.equal((await api('/api/health')).response.status,200);assert.equal((await api('/api/registry')).response.status,401);assert.equal((await api('/api/auth/session',{headers:{Cookie:adminCookie}})).body.principal.role,'administrator');});
+test('login failures are generic and logout revokes the session',async()=>{for(const login of ['missing@example.test','admin@example.test']){const result=await api('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,password:'wrong-password-value'})});assert.equal(result.response.status,401);assert.equal(result.body.error,'Login was not accepted.');}const cookie=await signIn('staff@example.test');assert.equal((await api('/api/auth/logout',auth(cookie,'POST',{}))).response.status,200);assert.equal((await api('/api/registry',{headers:{Cookie:cookie}})).response.status,401);});
+test('registry data is scoped by organisation and permissions',async()=>{const made=await api('/api/registry',auth(adminCookie,'POST',valid));assert.equal(made.response.status,201);assert.equal(made.body.businessArea,'Customer service');assert.equal((await api('/api/registry',{headers:{Cookie:otherCookie}})).body.records.length,0);assert.equal((await api(`/api/registry/${made.body.id}`,{headers:{Cookie:otherCookie}})).response.status,404);assert.equal((await api(`/api/registry/${made.body.id}`,auth(staffCookie,'PUT',valid))).response.status,403);});
+test('staff can disclose Shadow AI without granting approval',async()=>{const report=await api('/api/shadow-reports',auth(staffCookie,'POST',{name:'Unregistered assistant',businessArea:'Operations',purpose:'Fictional disclosure',dataDescription:'Synthetic data',dataSensitivity:'Internal'}));assert.equal(report.response.status,201);assert.equal(report.body.record.source,'shadow-report');assert.equal(report.body.record.approvalStatus,'Not reviewed');});
+test('reports require export permission and produce CSV and PDF',async()=>{assert.equal((await api('/api/reports/compliance.csv',{headers:{Cookie:staffCookie}})).response.status,403);const csv=await api('/api/reports/compliance.csv',{headers:{Cookie:adminCookie}});assert.equal(csv.response.status,200);assert.match(Buffer.from(csv.body).toString(),/Fictional AI helper/);const pdf=await api('/api/reports/compliance.pdf',{headers:{Cookie:adminCookie}});assert.equal(pdf.response.status,200);assert.equal(Buffer.from(pdf.body).subarray(0,4).toString(),'%PDF');});
+test('invalid origins and hosts are rejected',async()=>{assert.equal((await api('/api/registry',{headers:{Cookie:adminCookie,Origin:'http://localhost:65535'}})).response.status,403);const status=await new Promise((resolve,reject)=>{const u=new URL('/api/health',base),r=httpRequest({hostname:u.hostname,port:u.port,path:u.pathname,headers:{Host:'example.com'}},x=>{x.resume();x.on('end',()=>resolve(x.statusCode));});r.on('error',reject);r.end();});assert.equal(status,403);});
+
+test('demo-scale registry and report queries complete within the documented one-second target',async()=>{
+  const insert=db.prepare("INSERT INTO ai_uses VALUES (?, 'sme-a', NULL, ?, 'Synthetic performance record.', 'Fictional performance team', 'Operations', 'Synthetic data only.', 'Public', 'Not reviewed', 'registry', ?, ?)");
+  const now=new Date().toISOString();
+  db.exec('BEGIN');try{for(let index=0;index<500;index++)insert.run(`performance-${index}`,`Performance record ${index}`,now,now);db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
+  const started=performance.now();const registry=await api('/api/registry',{headers:{Cookie:adminCookie}});const report=await api('/api/reports/compliance.csv',{headers:{Cookie:adminCookie}});const elapsed=performance.now()-started;
+  assert.equal(registry.response.status,200);assert.equal(report.response.status,200);assert.ok(registry.body.records.length>=500);assert.ok(elapsed<1000,`Demo-scale queries took ${elapsed.toFixed(1)}ms.`);
 });
-test('create, read, filter and update', async () => {
-  const made = await api('/api/registry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(valid)});
-  assert.equal(made.response.status,201); assert.equal(made.body.assessmentStatus,'Not assessed');
-  assert.equal((await api(`/api/registry/${made.body.id}`)).body.dataDescription,valid.dataDescription);
-  assert.equal((await api('/api/registry?q=helper&category=Education')).body.records.length,1);
-  const changed = await api(`/api/registry/${made.body.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...valid,name:'Updated helper'})});
-  assert.equal(changed.body.name,'Updated helper');
-});
-test('invalid and untrusted requests are rejected', async () => {
-  const bad = await api('/api/registry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...valid,name:''})});
-  assert.equal(bad.response.status,400); assert.ok(bad.body.fields.name);
-  assert.equal((await api('/api/registry',{method:'POST',body:'{}'})).response.status,415);
-  assert.equal((await api('/api/registry/missing')).response.status,404);
-  assert.equal((await api('/api/registry',{headers:{Origin:'https://example.com'}})).response.status,403);
-  assert.equal((await api('/api/registry',{headers:{Origin:'http://localhost:65535'}})).response.status,403);
-  assert.equal(await statusWithHost('example.com'),403);
-});
-test('examples are idempotent and counted', async () => {
-  assert.equal((await api('/api/examples',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).body.added,3);
-  assert.equal((await api('/api/examples',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).body.added,0);
-  const summary=(await api('/api/overview')).body; assert.equal(summary.total,4); assert.equal(summary.unassessed,4);
+test('persisted actions feed reminder planning and the organisation dashboard',async()=>{
+  const aiUseId=db.prepare("SELECT id FROM ai_uses WHERE organization_id='sme-a' ORDER BY created_at LIMIT 1").get().id;
+  const created=await api('/api/actions',auth(adminCookie,'POST',{aiUseId,title:'Review fictional AI use',owner:'Fictional compliance officer',dueDate:'2026-10-01'}));
+  assert.equal(created.response.status,201);assert.equal(created.body.status,'Not Started');
+  const plan=await api('/api/reminders/plan',auth(adminCookie,'POST',{policy:{id:'demo-policy',version:'1',status:'approved',upcomingDays:[1],includeDueToday:true,includeOverdue:true,overdueRepeatDays:7},context:{asOfDate:'2026-09-30'}}));
+  assert.equal(plan.response.status,200);assert.equal(plan.body.reminders.length,1);assert.equal(plan.body.reminders[0].itemId,created.body.id);
+  const dashboard=await api('/api/dashboard?asOfDate=2026-10-02',{headers:{Cookie:adminCookie}});
+  assert.equal(dashboard.response.status,200);assert.equal(dashboard.body.actions.total,1);assert.equal(dashboard.body.actions.overdue,1);
+  const other=await api('/api/actions',{headers:{Cookie:otherCookie}});assert.deepEqual(other.body.actions,[]);
 });

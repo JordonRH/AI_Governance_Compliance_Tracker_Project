@@ -97,3 +97,16 @@ The top-bar **Dark theme** button switches appearance. Light remains the default
 Select a record name in the overview or registry to open read-only details. Use **Edit record** to change it. Close or Escape dismisses the details and restores focus to the record button. The existing row Edit action remains available.
 
 On Windows, if PowerShell blocks `npm.ps1`, use `npm.cmd` for the documented commands without changing execution policy. Keep the development watch scope restricted to `--watch-path=./server`.
+
+
+## Create the first local account
+
+The application does not contain a default password. Create an organisation administrator explicitly:
+
+```powershell
+$env:AITRACE_ACCOUNT_PASSWORD = 'choose-a-long-local-password'
+npm.cmd run account:create -- --organization-id demo-sme --organization-name "Fictional Demonstration SME" --login admin@example.test --display-name "Local Administrator" --role administrator
+Remove-Item Env:AITRACE_ACCOUNT_PASSWORD
+```
+
+Use at least 12 characters. Supported roles are `administrator`, `compliance_officer` and `staff_user`. Use fictional identities for development. Existing schema-version-1 data migrates into the `legacy-local` organisation; create its account with `--organization-id legacy-local` to access those records.

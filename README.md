@@ -1,12 +1,12 @@
 # AITrace
 
-AITrace is a local web application prototype that helps faculty register AI use, assess governance risk and track follow-up actions across education, administration and research.
+AITrace is a local web application prototype that helps Australian small and medium-sized enterprises register AI use, assess governance risk and track follow-up actions.
 
 Developed for the **University of Canberra ICT Capstone Project 2026-S2R-04 — AI Governance Compliance Tracker**, sponsored by **Sri Ramakrishna Engineering College**.
 
 ## Project status
 
-**Initial interface and backend ready for team review.** React/Vite, Express and SQLite provide a local overview and AI registry. Authentication and governance assessment are not implemented. Progressive implementation continues at Jordon's request, with small verified increments and team review pending.
+**Prototype foundation under active development.** React/Vite, Express and SQLite provide a local overview and AI registry. Tested domain foundations cover scoring, evidence intake, actions, reminders and scoped dashboard summaries; authentication and the persisted end-to-end governance workflow remain incomplete.
 
 The proposal's 33 work breakdown structure (WBS) activities are recorded in [GitHub Issues](https://github.com/JordonRH/AI_Governance_Compliance_Tracker_Project/issues). These were imported as draft planning records. Suggested owners, estimates, acceptance criteria and dependencies require team review; they do not establish completed work or actual contributions.
 
@@ -41,7 +41,7 @@ Checks cover the API, SQLite persistence and browser workflows. See [local devel
 ## Intended workflow
 
 1. **Register** an AI tool, system or use case and its purpose and data use.
-2. **Classify** its use within education, administration or research.
+2. **Describe** its business area, data sensitivity and approval state.
 3. **Assess** governance through a structured questionnaire.
 4. **Understand risk** through an explainable, rules-based result.
 5. **Take action** by tracking owners, due dates and progress.
@@ -49,7 +49,7 @@ Checks cover the API, SQLite persistence and browser workflows. See [local devel
 
 The documented functional baseline includes authentication and role-based access, an AI registry, governance assessments, risk explanations, policy/evidence handling, action tracking, review reminders, dashboards, PDF/CSV reporting and Shadow AI self-reporting.
 
-Exact roles, approval workflows, assessment questions, framework mappings, scoring thresholds and the meaning of “compliance status” remain subject to confirmation. The team will not invent governance rules to fill these gaps.
+The capstone baseline defines Administrator, Compliance Officer and Staff User roles. Their permission matrix, approval workflows, assessment questions, scoring thresholds and the meaning of compliance status require traceable decisions. The team will not invent governance rules to fill these gaps.
 
 ## Agreed technology direction
 
@@ -113,7 +113,7 @@ Out of scope:
 - Automatic network/device monitoring or discovery of Shadow AI.
 - Deepfake detection and AI-content forensics.
 - Machine-learning-based compliance decisions.
-- Real sensitive student, staff or research-participant data.
+- Real client, employee or third-party personal information.
 - Enterprise SSO and live institutional integrations unless subsequently approved.
 - LLM-based compliance decisions or policy analysis unless separately approved.
 

@@ -135,3 +135,14 @@ Issue #19 now has a pure dashboard snapshot builder. It filters records by an au
 The domain foundations now share one validation utility. The audit also tightened risk-definition dates and typed rule operands, rejects malformed or conflicting action definitions without throwing, validates current governance-action state, treats whitespace-only updates as no-ops, requires advancing timestamps for material updates, and validates dashboard data only after authorised-scope filtering. The local API origin policy now requires the exact current HTTP origin, including its port.
 
 Verification passed with 44 Node tests, 7 Playwright tests, a production build, zero npm audit vulnerabilities and a clean Git diff check. Authentication, approved governance content, evidence storage and reminder delivery channels remain decision-gated.
+
+
+## Capstone requirements alignment 25 September 2026
+
+The capstone requirements are now the product baseline. The interface uses SME and organisation language, the registry records a free-text business area, structured data sensitivity and approval status, and the database scopes records to an organisation. The required role labels are Administrator, Compliance Officer and Staff User.
+
+Organisation accounts use salted scrypt password hashes. Opaque session tokens are stored only as SHA-256 hashes and sent in host-only HttpOnly SameSite Strict cookies. Protected API routes deny anonymous requests and enforce action permissions. Tests cover generic login failures, logout revocation, role denial and horizontal isolation between two fictional organisations. Local HTTP remains restricted to loopback; production TLS remains a deployment requirement.
+
+Shadow AI self-reporting now creates an unapproved disclosure in the organisation registry without automated discovery. Administrators and Compliance Officers can export organisation-scoped CSV and basic PDF compliance summaries. These exports state recorded facts and do not claim certification.
+
+The questionnaire, approved scoring definitions, persisted risk results, evidence storage, action persistence and reminder delivery still require integration. The pure modules remain available and tested, but governance content is not invented. See `capstone-requirements-traceability.md` for the ticket mapping and remaining evidence.
