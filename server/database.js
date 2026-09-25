@@ -55,8 +55,8 @@ export function openDatabase(filename) {
         owner TEXT NOT NULL,
         business_area TEXT NOT NULL,
         data_description TEXT NOT NULL,
-        data_sensitivity TEXT NOT NULL,
-        approval_status TEXT NOT NULL,
+        data_sensitivity TEXT NOT NULL CHECK(data_sensitivity IN ('Not classified','Public','Internal','Confidential','Sensitive')),
+        approval_status TEXT NOT NULL CHECK(approval_status IN ('Not reviewed','Approved','Declined')),
         source TEXT NOT NULL CHECK(source IN ('registry','shadow-report')),
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -87,7 +87,7 @@ export function openDatabase(filename) {
         CREATE TABLE ai_uses (
           id TEXT PRIMARY KEY, organization_id TEXT NOT NULL REFERENCES organizations(id), created_by_account_id TEXT REFERENCES accounts(id),
           name TEXT NOT NULL, purpose TEXT NOT NULL, owner TEXT NOT NULL, business_area TEXT NOT NULL, data_description TEXT NOT NULL,
-          data_sensitivity TEXT NOT NULL, approval_status TEXT NOT NULL, source TEXT NOT NULL CHECK(source IN ('registry','shadow-report')),
+          data_sensitivity TEXT NOT NULL CHECK(data_sensitivity IN ('Not classified','Public','Internal','Confidential','Sensitive')), approval_status TEXT NOT NULL CHECK(approval_status IN ('Not reviewed','Approved','Declined')), source TEXT NOT NULL CHECK(source IN ('registry','shadow-report')),
           created_at TEXT NOT NULL, updated_at TEXT NOT NULL
         ) STRICT;
       `);

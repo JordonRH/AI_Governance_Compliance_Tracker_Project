@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import express from 'express';
-import { expiredSessionCookie, hasPermission, login, resolveRequestPrincipal, revokeRequestSession, sessionCookie } from './auth.js';
+import { createAccount, expiredSessionCookie, hasPermission, login, resolveRequestPrincipal, revokeRequestSession, sessionCookie } from './auth.js';
 import { isAllowedHostHeader } from './config.js';
+import { approvalStatuses, dataSensitivities } from './registry-model.js';
+import { createComplianceCsv, createCompliancePdf } from './reporting.js';
 import { buildDashboardSnapshot } from './domain/dashboard-summary.js';
 import { createGovernanceAction, updateGovernanceAction } from './domain/governance-action.js';
 import { planReminders } from './domain/reminder-planning.js';
@@ -27,35 +29,11 @@ function validate(body, { shadow = false } = {}) {
     if (typeof body[key] !== 'string' || !body[key].trim()) errors[key] = 'This field is required.';
     else if (body[key].trim().length > max) errors[key] = `Must be ${max} characters or fewer.`;
   }
+  if (body?.dataSensitivity !== undefined && !dataSensitivities.includes(body.dataSensitivity)) errors.dataSensitivity = 'Choose a valid data sensitivity.';
+  if (!shadow && body?.approvalStatus !== undefined && !approvalStatuses.includes(body.approvalStatus)) errors.approvalStatus = 'Choose a valid approval status.';
   return errors;
 }
 const clean = (body, defaults = {}) => Object.fromEntries(Object.keys(limits).map(key => [key, typeof body[key] === 'string' ? body[key].trim() : defaults[key]]));
-const csvCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
-function csv(records) {
-  const headings = ['Name','Purpose','Owner','Business area','Data sensitivity','Approval status','Assessment status','Source','Updated at'];
-  return [headings, ...records.map(record => [record.name,record.purpose,record.owner,record.businessArea,record.dataSensitivity,record.approvalStatus,record.assessmentStatus,record.source,record.updatedAt])]
-    .map(row => row.map(csvCell).join(',')).join('\r\n');
-}
-function pdfText(records, organizationName) {
-  const lines = [`AI governance compliance summary - ${organizationName}`, `Generated ${new Date().toISOString()}`, `Registered and disclosed AI uses: ${records.length}`, ''];
-  for (const record of records) lines.push(`${record.name} | ${record.businessArea} | ${record.dataSensitivity} | ${record.approvalStatus} | ${record.assessmentStatus}`);
-  const safe = lines.slice(0, 45).map(line => line.replaceAll('\\','\\\\').replaceAll('(','\\(').replaceAll(')','\\)').replace(/[^\x20-\x7E]/g,'?'));
-  const stream = ['BT','/F1 10 Tf','50 790 Td',...safe.flatMap((line,index) => index ? ['0 -16 Td',`(${line}) Tj`] : [`(${line}) Tj`]),'ET'].join('\n');
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
-    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
-  ];
-  let output='%PDF-1.4\n', offsets=[0];
-  objects.forEach((object,index)=>{offsets.push(Buffer.byteLength(output));output+=`${index+1} 0 obj\n${object}\nendobj\n`;});
-  const xref=Buffer.byteLength(output); output+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
-  for(let i=1;i<offsets.length;i++) output+=`${String(offsets[i]).padStart(10,'0')} 00000 n \n`;
-  output+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-  return Buffer.from(output);
-}
-
 export function createApp(db, http) {
   if (!db || !http?.allowedHostnames || !http?.requestBodyLimitBytes) throw new Error('Database and HTTP configuration are required.');
   const app = express();
@@ -107,6 +85,17 @@ export function createApp(db, http) {
     res.json({ status: 'signed-out' });
   });
 
+  app.get('/api/accounts', requirePermission('account:manage'), (req,res)=>{
+    const accounts=db.prepare('SELECT id,login,display_name,role,status,created_at,updated_at FROM accounts WHERE organization_id=? ORDER BY display_name,login').all(req.principal.organizationId).map(row=>({id:row.id,login:row.login,displayName:row.display_name,role:row.role,status:row.status,createdAt:row.created_at,updatedAt:row.updated_at}));
+    res.json({accounts});
+  });
+  app.post('/api/accounts', requirePermission('account:manage'), async (req,res,next)=>{
+    try{
+      const id=await createAccount(db,{organizationId:req.principal.organizationId,organizationName:req.principal.organizationName,login:req.body?.login,displayName:req.body?.displayName,role:req.body?.role,password:req.body?.password});
+      const row=db.prepare('SELECT id,login,display_name,role,status,created_at,updated_at FROM accounts WHERE id=?').get(id);
+      res.status(201).json({id:row.id,login:row.login,displayName:row.display_name,role:row.role,status:row.status,createdAt:row.created_at,updatedAt:row.updated_at});
+    }catch(error){if(String(error.message).includes('UNIQUE constraint'))return res.status(409).json({error:'An account with that login already exists.'});if(error instanceof Error)return res.status(400).json({error:error.message});next(error);}
+  });
   app.get('/api/registry', requirePermission('registry:read'), (req, res) => {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const businessArea = typeof req.query.businessArea === 'string' ? req.query.businessArea.trim() : '';
@@ -194,17 +183,17 @@ export function createApp(db, http) {
     if(areas.length===0) return res.json({status:'complete',scopeId:req.principal.organizationId,filter:{category:null,asOfDate:req.query.asOfDate||new Date().toISOString().slice(0,10)},registry:{total:0,assessed:0,notAssessed:0,byCategory:{}},risk:{status:'available',total:0,byOutcome:[]},actions:{status:'available',total:0,outstanding:0,overdue:0,byStatus:{'Not Started':0,'In Progress':0,Complete:0}}});
     const records=registry.map(record=>({id:record.id,institutionId:record.organizationId,category:record.businessArea,assessmentStatus:record.assessmentStatus}));
     const actions=db.prepare('SELECT * FROM governance_actions WHERE organization_id=?').all(req.principal.organizationId).map(actionFromRow);
-    const snapshot=buildDashboardSnapshot({id:req.principal.organizationId,institutionIds:[req.principal.organizationId],categories:areas,includeRiskSummary:true,includeActionSummary:true},records,actions,{asOfDate:req.query.asOfDate||new Date().toISOString().slice(0,10)});
+    const snapshot=buildDashboardSnapshot({id:req.principal.organizationId,institutionIds:[req.principal.organizationId],categories:areas,includeRiskSummary:hasPermission(req.principal,'assessment:review'),includeActionSummary:hasPermission(req.principal,'action:manage')},records,actions,{asOfDate:req.query.asOfDate||new Date().toISOString().slice(0,10)});
     res.status(snapshot.status==='invalid'?400:200).json(snapshot);
   });
 
   app.get('/api/reports/compliance.csv', requirePermission('report:export'), (req,res)=>{
     const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map);
-    res.type('text/csv').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.csv"').send(csv(records));
+    res.type('text/csv').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.csv"').send(createComplianceCsv(records));
   });
   app.get('/api/reports/compliance.pdf', requirePermission('report:export'), (req,res)=>{
     const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map);
-    res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.pdf"').send(pdfText(records,req.principal.organizationName));
+    res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.pdf"').send(createCompliancePdf(records,req.principal.organizationName));
   });
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API route was not found.' }));
   return app;

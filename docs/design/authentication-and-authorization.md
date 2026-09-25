@@ -154,3 +154,17 @@ No authentication tables or routes should be added until at least decisions 1–
 - MDN. [Secure cookie configuration](https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/Cookies).
 
 Sources checked on 20 September 2026.
+
+
+## Provisional implementation decisions 25 September 2026
+
+Jordon confirmed the group has no objection to continued implementation and directed the seven capstone-alignment actions. The following local-prototype defaults are therefore recorded for implementation and review:
+
+- Required role identifiers and labels: Administrator, Compliance Officer and Staff User.
+- Administrators and Compliance Officers can manage formal registry records, governance actions, reminders and reports.
+- Staff Users can view their organisation's registry, submit assessments when approved content exists, and disclose unregistered AI use. They cannot create or approve formal registry records.
+- Accounts are created explicitly by an administrator through the local account command. Public self-registration, invitations, recovery and account-management UI remain open.
+- Passwords must contain 12 to 200 characters and use Node scrypt with a unique 16-byte salt, cost 32768, block size 8, parallelisation 1 and a 32-byte derived key.
+- Sessions use 32 random bytes, store only a SHA-256 token digest, expire after eight hours and use host-only HttpOnly SameSite Strict cookies.
+- HTTP authentication is allowed only on the loopback prototype. Any non-loopback deployment requires HTTPS and Secure cookies.
+- These defaults are reviewable implementation decisions, not sponsor approval of governance content or production deployment.

@@ -11,7 +11,7 @@ const roleLabels = Object.freeze({
 const permissions = Object.freeze({
   administrator: new Set(['registry:read', 'registry:create', 'registry:update', 'assessment:submit', 'assessment:review', 'action:manage', 'report:export', 'shadow:create', 'account:manage']),
   compliance_officer: new Set(['registry:read', 'registry:create', 'registry:update', 'assessment:submit', 'assessment:review', 'action:manage', 'report:export', 'shadow:create']),
-  staff_user: new Set(['registry:read', 'registry:create', 'assessment:submit', 'shadow:create'])
+  staff_user: new Set(['registry:read', 'assessment:submit', 'shadow:create'])
 });
 const parameters = Object.freeze({ cost: 32768, blockSize: 8, parallelization: 1, keyLength: 32, maxmem: 64 * 1024 * 1024 });
 const cookieName = 'aitrace_session';

@@ -48,3 +48,11 @@ test('persisted actions feed reminder planning and the organisation dashboard',a
   assert.equal(dashboard.response.status,200);assert.equal(dashboard.body.actions.total,1);assert.equal(dashboard.body.actions.overdue,1);
   const other=await api('/api/actions',{headers:{Cookie:otherCookie}});assert.deepEqual(other.body.actions,[]);
 });
+test('Staff User cannot create a formal registry record',async()=>{const result=await api('/api/registry',auth(staffCookie,'POST',{...valid,approvalStatus:'Approved'}));assert.equal(result.response.status,403);});
+
+test('Administrator can register an organisation account without exposing password material',async()=>{
+  const input={login:'compliance@example.test',displayName:'Fictional Compliance Officer',role:'compliance_officer',password:'another correct password'};
+  const created=await api('/api/accounts',auth(adminCookie,'POST',input));assert.equal(created.response.status,201);assert.equal(created.body.role,'compliance_officer');assert.equal('password' in created.body,false);assert.equal('passwordHash' in created.body,false);
+  assert.equal((await api('/api/accounts',auth(staffCookie,'POST',{...input,login:'blocked@example.test'}))).response.status,403);
+  const signedIn=await api('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:input.login,password:input.password})});assert.equal(signedIn.response.status,200);
+});

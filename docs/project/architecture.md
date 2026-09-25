@@ -43,7 +43,7 @@ The first UI is intentionally small enough to follow in one file. Split screens 
 
 Schema version 2 stores organisations, accounts, hashed server sessions and organisation-scoped AI uses. Registry records include business area, data description, structured data sensitivity, approval status, source and creator alongside timestamps. Existing schema-version-1 records migrate into a named legacy local organisation.
 
-Queries use bound parameters. Creation and modification timestamps are retained, but they do not constitute an audit history. No account, approval or assessment tables exist yet. The derived status `Not assessed` is returned to the UI without calculating a risk level.
+Queries use bound parameters. Accounts, hashed sessions, organisations, structured registry fields and governance actions are persisted. The derived assessment status remains `Not assessed` until approved questionnaire content and assessment-result persistence are implemented.
 
 The initial single-category choice and data-description field are provisional. The later agreed model must address multi-category use if required, data sensitivity, permissions, approval records, institutional separation and status history.
 
@@ -69,15 +69,15 @@ The registry supports creation, editing, search and category filters. A native m
 
 ## Boundaries and deferred work
 
-This increment is an unauthenticated local demonstration, explicitly allowed to progress before the complete authentication-dependent registry ticket. It is not completion of FR-01, FR-02, FR-04 or the whole dashboard requirement.
+This increment is an authenticated loopback demonstration with organisation-scoped records. It is not production-ready and does not complete the questionnaire, approved risk content, policy repository or full compliance dashboard.
 
-Authentication/RBAC, governance rules, assessments, approval workflows, actions, evidence files, reminders, PDF/CSV exports, Shadow AI reporting and audit history remain open. Do not infer Low/Medium/High risk from category or descriptive text.
+Account administration, governance rules, assessments, evidence storage, reminder delivery and complete audit history remain open. Governance actions, reminder planning, CSV/PDF exports and Shadow AI disclosure have authenticated prototype implementations. Do not infer risk from business area or descriptive text.
 
 Before implementing the rules engine, agree the governing sources, questions, thresholds and terminology. A future assessment should retain its rule version and explain its result. This document records that design direction without selecting a governance framework.
 
 The proposed scoring seam is documented in `docs/design/risk-scoring-module.md`. It uses a pure `evaluateAssessment(definition, responses, context)` interface so deterministic validation, evaluation and explanation stay in one deep module. Database and HTTP adapters remain outside that seam. The pure scoring module now exists, but it has no authorised rule content and is not connected to assessment persistence, API routes or the interface.
 
-The proposed authentication seam is documented in `docs/design/authentication-and-authorization.md`. It separates request authentication from action/resource authorisation and denies protected routes by default. The design recommends opaque server-side sessions rather than browser storage. No account/session schema or route exists because roles, account bootstrap, password policy, session lifetime and password-hashing technology still require approval.
+The authentication seam is documented in `docs/design/authentication-and-authorization.md`. It separates request authentication from action/resource authorisation, denies protected routes by default, and uses persisted accounts plus opaque server-side sessions. Provisional local defaults and remaining production decisions are recorded there.
 
 The proposed assessment seam is documented in `docs/design/governance-assessment-module.md`. It owns draft lifecycle, response validation, concurrency and immutable submission, then hands a completed response set to the separate scoring module. No questionnaire schema or interface exists because content, evidence and permission decisions remain unapproved.
 

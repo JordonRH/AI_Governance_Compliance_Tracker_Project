@@ -36,7 +36,7 @@ npm run test:e2e:install
 npm run test:e2e
 ```
 
-Checks cover the API, SQLite persistence and browser workflows. See [local development](docs/project/development.md) for details. Use fictional data only; login and role permissions are not available yet.
+Checks cover authentication, organisation isolation, the registry API, SQLite persistence, reports and browser workflows. See [local development](docs/project/development.md) for details. Use fictional data only.
 
 ## Intended workflow
 
@@ -63,8 +63,8 @@ The capstone baseline defines Administrator, Compliance Officer and Staff User r
 | Development and demonstration | Local deployment |
 | Application structure | A simple modular monolith is preferred |
 | Database | SQLite through the built-in Node.js SQLite module |
-| Authentication and authorisation implementation | TBD |
-| File storage, dashboard libraries, reporting and reminders | TBD |
+| Authentication and authorisation | Local accounts, scrypt passwords, opaque sessions and server-enforced permissions |
+| File storage and delivery channels | TBD; CSV/PDF export and reminder planning are implemented |
 
 Unresolved technologies and governance rules remain open. The registry is a local demonstration, not an authenticated institutional system. Read the [documentation index](docs/README.md), [local development](docs/project/development.md), [architecture](docs/project/architecture.md) and [progress](docs/project/progress.md) before extending it.
 

@@ -2,12 +2,7 @@ import { resolve } from 'node:path';
 
 const supportedNames = new Set([
   'AITRACE_BIND_HOST',
-  'AITRACE_REQUEST_BODY_LIMIT_BYTES',
-  'AITRACE_BOOTSTRAP_LOGIN',
-  'AITRACE_BOOTSTRAP_PASSWORD',
-  'AITRACE_BOOTSTRAP_ORGANIZATION_ID',
-  'AITRACE_BOOTSTRAP_ORGANIZATION_NAME',
-  'AITRACE_BOOTSTRAP_DISPLAY_NAME'
+  'AITRACE_REQUEST_BODY_LIMIT_BYTES'
 ]);
 
 function integer(name, value, fallback, minimum, maximum) {
