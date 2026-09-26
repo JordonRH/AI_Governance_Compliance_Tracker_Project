@@ -127,3 +127,14 @@ test('assessment drafts enforce scope and revision, submit immutable explainable
  assert.equal((await api(`/api/assessments/${id}`,auth(adminCookie,'PUT',{expectedRevision:3,responses}))).response.status,409);
  assert.equal((await api('/api/registry',auth(adminCookie))).body.records.find(r=>r.id===record.id).assessmentStatus,'Assessed');
 });
+
+test('action owners and assessment links cannot cross organisations',async()=>{
+ const record=(await api('/api/registry',auth(adminCookie,'POST',valid))).body;
+ const staff=db.prepare("SELECT id FROM accounts WHERE login='staff@example.test'").get();const foreign=db.prepare("SELECT id FROM accounts WHERE login='other@example.test'").get();
+ const input={aiUseId:record.id,title:'Assigned review',ownerAccountId:staff.id,dueDate:'2026-10-01'};
+ assert.equal((await api('/api/actions',auth(adminCookie,'POST',{...input,ownerAccountId:foreign.id}))).response.status,400);
+ const made=await api('/api/actions',auth(adminCookie,'POST',input));assert.equal(made.response.status,201);assert.equal(made.body.ownerAccountId,staff.id);
+ assert.ok((await api('/api/actions',auth(staffCookie))).body.actions.some(a=>a.id===made.body.id));
+ assert.equal((await api('/api/actions',auth(otherCookie))).body.actions.length,0);
+ assert.equal((await api('/api/actions',auth(adminCookie,'POST',{...input,assessmentId:'missing'}))).response.status,400);
+});

@@ -170,29 +170,40 @@ export function createApp(db, http) {
     res.json({total,unassessed:total,byBusinessArea});
   });
 
-  const actionFromRow = row => ({ id:row.id, aiUseId:row.ai_use_id, ...(row.assessment_id?{assessmentId:row.assessment_id}:{}), title:row.title, owner:row.owner, dueDate:row.due_date, status:row.status, version:row.version, createdAt:row.created_at, updatedAt:row.updated_at, completedAt:row.completed_at, history:JSON.parse(row.history_json) });
+  const actionFromRow = row => ({ id:row.id, ownerAccountId:row.owner_account_id, aiUseId:row.ai_use_id, ...(row.assessment_id?{assessmentId:row.assessment_id}:{}), title:row.title, owner:row.owner, dueDate:row.due_date, status:row.status, version:row.version, createdAt:row.created_at, updatedAt:row.updated_at, completedAt:row.completed_at, history:JSON.parse(row.history_json) });
 
   app.get('/api/actions', requirePermission('registry:read'), (req,res)=>{
     const rows=db.prepare('SELECT * FROM governance_actions WHERE organization_id=? ORDER BY due_date,id').all(req.principal.organizationId);
-    res.json({actions:rows.map(actionFromRow)});
+    res.json({actions:rows.filter(row=>req.principal.role!=='staff_user'||row.owner_account_id===req.principal.accountId).map(actionFromRow)});
+  });
+  app.get('/api/action-owners', requirePermission('action:manage'), (req,res)=>{
+    res.json({accounts:db.prepare("SELECT id,display_name displayName FROM accounts WHERE organization_id=? AND status='active' ORDER BY display_name").all(req.principal.organizationId)});
   });
   app.post('/api/actions', requirePermission('action:manage'), (req,res)=>{
     if(!db.prepare('SELECT 1 FROM ai_uses WHERE id=? AND organization_id=?').get(req.body?.aiUseId,req.principal.organizationId)) return res.status(400).json({error:'A visible AI use is required.'});
-    const result=createGovernanceAction({...req.body,id:randomUUID()},{actorId:req.principal.accountId,timestamp:new Date().toISOString()});
+    const owner=req.body?.ownerAccountId?db.prepare("SELECT id,display_name FROM accounts WHERE id=? AND organization_id=? AND status='active'").get(req.body.ownerAccountId,req.principal.organizationId):null;
+    if(req.body?.ownerAccountId&&!owner)return res.status(400).json({error:'Choose an active owner in your organisation.'});
+    if(req.body?.assessmentId&&!db.prepare("SELECT 1 FROM assessments WHERE id=? AND ai_use_id=? AND organization_id=? AND state='Submitted'").get(req.body.assessmentId,req.body.aiUseId,req.principal.organizationId))return res.status(400).json({error:'Choose a submitted assessment for this AI use.'});
+    const result=createGovernanceAction({...req.body,...(owner?{owner:owner.display_name}:{}),id:randomUUID()},{actorId:req.principal.accountId,timestamp:new Date().toISOString()});
     if(result.status==='invalid') return res.status(400).json({error:'Check the action fields.',findings:result.findings});
     const action=result.action;
-    db.prepare(`INSERT INTO governance_actions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(action.id,req.principal.organizationId,action.aiUseId,action.assessmentId??null,action.title,action.owner,action.dueDate,action.status,action.version,action.createdAt,action.updatedAt,action.completedAt,JSON.stringify(action.history));
-    res.status(201).json(action);
+    db.prepare(`INSERT INTO governance_actions (id,organization_id,ai_use_id,assessment_id,title,owner,due_date,status,version,created_at,updated_at,completed_at,history_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(action.id,req.principal.organizationId,action.aiUseId,action.assessmentId??null,action.title,action.owner,action.dueDate,action.status,action.version,action.createdAt,action.updatedAt,action.completedAt,JSON.stringify(action.history));
+    if(owner)db.prepare('UPDATE governance_actions SET owner_account_id=? WHERE id=?').run(owner.id,action.id);
+    res.status(201).json({...action,ownerAccountId:owner?.id||null});
   });
   app.put('/api/actions/:id', requirePermission('action:manage'), (req,res)=>{
     const row=db.prepare('SELECT * FROM governance_actions WHERE id=? AND organization_id=?').get(req.params.id,req.principal.organizationId);
     if(!row) return res.status(404).json({error:'Governance action was not found.'});
-    const result=updateGovernanceAction(actionFromRow(row),req.body,{actorId:req.principal.accountId,timestamp:new Date().toISOString()});
+    const patch={...req.body};
+    let ownerId=row.owner_account_id;
+    if(patch.ownerAccountId!==undefined){const owner=db.prepare("SELECT id,display_name FROM accounts WHERE id=? AND organization_id=? AND status='active'").get(patch.ownerAccountId,req.principal.organizationId);if(!owner)return res.status(400).json({error:'Choose an active owner in your organisation.'});ownerId=owner.id;patch.owner=owner.display_name;delete patch.ownerAccountId;}
+    const result=updateGovernanceAction(actionFromRow(row),patch,{actorId:req.principal.accountId,timestamp:new Date().toISOString()});
     if(result.status==='invalid') return res.status(400).json({error:'Check the action update.',findings:result.findings});
-    if(result.status==='unchanged') return res.json(result.action);
+    if(result.status==='unchanged'){db.prepare('UPDATE governance_actions SET owner_account_id=? WHERE id=?').run(ownerId,row.id);return res.json({...result.action,ownerAccountId:ownerId});}
     const action=result.action;
     db.prepare(`UPDATE governance_actions SET title=?,owner=?,due_date=?,status=?,version=?,updated_at=?,completed_at=?,history_json=? WHERE id=? AND organization_id=?`).run(action.title,action.owner,action.dueDate,action.status,action.version,action.updatedAt,action.completedAt,JSON.stringify(action.history),action.id,req.principal.organizationId);
-    res.json(action);
+    db.prepare('UPDATE governance_actions SET owner_account_id=? WHERE id=?').run(ownerId,action.id);
+    res.json({...action,ownerAccountId:ownerId});
   });
   app.post('/api/reminders/plan', requirePermission('action:manage'), (req,res)=>{
     const items=db.prepare('SELECT id,due_date,status FROM governance_actions WHERE organization_id=?').all(req.principal.organizationId).map(row=>({id:row.id,kind:'action',dueDate:row.due_date,isClosed:row.status==='Complete'}));
