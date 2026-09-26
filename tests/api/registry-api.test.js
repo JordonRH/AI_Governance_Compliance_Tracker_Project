@@ -102,3 +102,14 @@ test('administrators can disable, reactivate, and change roles without self-lock
   assert.equal((await api(`/api/accounts/${self}`,auth(adminCookie,'PATCH',{role:'administrator',status:'disabled'}))).response.status,400);
   assert.equal((await api('/api/accounts',auth(adminCookie))).response.status,200);
 });
+
+test('fictional examples load transactionally and can be loaded twice',async()=>{
+  const first=await api('/api/examples',auth(adminCookie,'POST',{}));assert.equal(first.response.status,200);assert.equal(first.body.added,3);
+  assert.equal((await api('/api/examples',auth(adminCookie,'POST',{}))).body.added,0);
+});
+test('empty dashboard still enforces role summaries and validates dates',async()=>{
+  const id=await createAccount(db,{organizationId:'empty',organizationName:'Empty',login:'empty',displayName:'Empty Staff',role:'staff_user',password:'correct horse battery'});
+  const cookie=await signIn('empty');const dashboard=await api('/api/dashboard',auth(cookie));
+  assert.equal(dashboard.body.risk.status,'restricted');assert.equal(dashboard.body.actions.status,'restricted');
+  assert.equal((await api('/api/dashboard?asOfDate=2026-02-31',auth(cookie))).response.status,400);
+});

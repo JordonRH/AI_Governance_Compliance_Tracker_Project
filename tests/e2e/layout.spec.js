@@ -1,6 +1,7 @@
-﻿import {test,expect} from '@playwright/test';
+import {test,expect} from '@playwright/test';
 
 test('consistent required fields and responsive pages', async({page}, testInfo)=>{
+  const pageErrors=[];page.on('pageerror',e=>pageErrors.push(e.message));
   await page.setViewportSize({width:1440,height:1000});
   await page.goto('/');
   await page.screenshot({path:testInfo.outputPath('login.png'),fullPage:true});
@@ -27,6 +28,7 @@ test('consistent required fields and responsive pages', async({page}, testInfo)=
       await page.screenshot({path:testInfo.outputPath(`${name}-${width}.png`),fullPage:true});
     }
   }
+  expect(pageErrors).toEqual([]);
   await page.getByRole('button',{name:'Dark theme'}).click();
   await page.screenshot({path:testInfo.outputPath('accounts-dark-mobile.png'),fullPage:true});
 });

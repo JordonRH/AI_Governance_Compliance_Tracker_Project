@@ -11,9 +11,9 @@ import { planReminders } from './domain/reminder-planning.js';
 
 const limits = { name: 120, owner: 120, businessArea: 120, purpose: 2000, dataDescription: 1000, dataSensitivity: 80, approvalStatus: 80 };
 const samples = [
-  ['Fictional customer enquiry assistant','Fictional service team','Customer service','Demonstrate an AI-assisted customer enquiry use case.','Synthetic questions and fictional product information only.','Public demo data'],
+  ['Fictional customer enquiry assistant','Fictional service team','Customer service','Demonstrate an AI-assisted customer enquiry use case.','Synthetic questions and fictional product information only.','Public'],
   ['Fictional invoice helper','Fictional finance team','Finance','Demonstrate assistance with fictional invoice classification.','Synthetic invoice records only.','Confidential'],
-  ['Fictional product research helper','Fictional product team','Product development','Demonstrate exploration of fictional market topics.','Public sample material and synthetic prompts only.','Public demo data']
+  ['Fictional product research helper','Fictional product team','Product development','Demonstrate exploration of fictional market topics.','Public sample material and synthetic prompts only.','Public']
 ];
 const selectFields = `id, organization_id, created_by_account_id, name, purpose, owner, business_area, data_description, data_sensitivity, approval_status, source, created_at, updated_at`;
 const map = row => ({ id: row.id, organizationId: row.organization_id, name: row.name, purpose: row.purpose, owner: row.owner,
@@ -40,7 +40,7 @@ export function createApp(db, http) {
   app.disable('x-powered-by');
   app.use((req, res, next) => {
     if (!isAllowedHostHeader(req.headers.host, http.allowedHostnames)) return res.status(403).json({ error: 'Host is not allowed.' });
-    res.set({ 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; style-src 'self' 'unsafe-inline'",
+    res.set({ 'Cache-Control': 'no-store', 'Content-Security-Policy': `default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'${http.development ? " 'unsafe-inline'" : ''}; connect-src 'self'${http.development ? ' ws://127.0.0.1:* ws://localhost:*' : ''}`,
       'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY' });
     next();
   });
@@ -155,9 +155,11 @@ export function createApp(db, http) {
   app.post('/api/examples', requirePermission('registry:create'), (_req, res) => {
     const exists = db.prepare('SELECT 1 FROM ai_uses WHERE organization_id=? AND name=?'), insert = db.prepare(`INSERT INTO ai_uses VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'registry', ?, ?)`);
     let added=0;
-    for(const [name,owner,area,purpose,data,sensitivity] of samples) if(!exists.get(_req.principal.organizationId,name)){
+    db.exec('BEGIN');
+    try { for(const [name,owner,area,purpose,data,sensitivity] of samples) if(!exists.get(_req.principal.organizationId,name)){
       const now=new Date().toISOString();insert.run(randomUUID(),_req.principal.organizationId,_req.principal.accountId,name,purpose,owner,area,data,sensitivity,'Not reviewed',now,now);added++;
     }
+    db.exec('COMMIT'); } catch(error) { db.exec('ROLLBACK'); throw error; }
     res.json({added});
   });
   app.get('/api/overview', requirePermission('registry:read'), (req, res) => {
@@ -198,7 +200,8 @@ export function createApp(db, http) {
   app.get('/api/dashboard', requirePermission('registry:read'), (req,res)=>{
     const registry=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=?`).all(req.principal.organizationId).map(map);
     const areas=[...new Set(registry.map(record=>record.businessArea))].sort();
-    if(areas.length===0) return res.json({status:'complete',scopeId:req.principal.organizationId,filter:{category:null,asOfDate:req.query.asOfDate||new Date().toISOString().slice(0,10)},registry:{total:0,assessed:0,notAssessed:0,byCategory:{}},risk:{status:'available',total:0,byOutcome:[]},actions:{status:'available',total:0,outstanding:0,overdue:0,byStatus:{'Not Started':0,'In Progress':0,Complete:0}}});
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(req.query.asOfDate || new Date().toISOString().slice(0,10)) || Number.isNaN(Date.parse(req.query.asOfDate || new Date().toISOString()))) return res.status(400).json({error:'A valid date is required.'});
+    if(areas.length===0) areas.push('No records');
     const records=registry.map(record=>({id:record.id,institutionId:record.organizationId,category:record.businessArea,assessmentStatus:record.assessmentStatus}));
     const actions=db.prepare('SELECT * FROM governance_actions WHERE organization_id=?').all(req.principal.organizationId).map(actionFromRow);
     const snapshot=buildDashboardSnapshot({id:req.principal.organizationId,institutionIds:[req.principal.organizationId],categories:areas,includeRiskSummary:hasPermission(req.principal,'assessment:review'),includeActionSummary:hasPermission(req.principal,'action:manage')},records,actions,{asOfDate:req.query.asOfDate||new Date().toISOString().slice(0,10)});
@@ -214,5 +217,6 @@ export function createApp(db, http) {
     res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.pdf"').send(createCompliancePdf(records,req.principal.organizationName));
   });
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API route was not found.' }));
+  app.use('/api', (error, _req, res, _next) => { console.error(error.message); res.status(500).json({error:'The request could not be completed. Please try again.'}); });
   return app;
 }

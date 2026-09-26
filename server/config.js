@@ -47,7 +47,7 @@ export function loadConfig({ env = process.env, args = process.argv.slice(2), ro
     database: databasePath(env.DATABASE_PATH, rootDir),
     distribution: resolve(rootDir, 'dist')
   });
-  const http = Object.freeze({ requestBodyLimitBytes, allowedHostnames });
+  const http = Object.freeze({ requestBodyLimitBytes, allowedHostnames, development: !production });
 
   return Object.freeze({
     mode: production ? 'production' : 'development',
