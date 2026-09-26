@@ -3,7 +3,8 @@ import { resolve } from 'node:path';
 const supportedNames = new Set([
   'AITRACE_BIND_HOST',
   'AITRACE_REQUEST_BODY_LIMIT_BYTES',
-  'AITRACE_REMINDER_INTERVAL_MS'
+  'AITRACE_REMINDER_INTERVAL_MS',
+  'AITRACE_TLS_CERT_PATH','AITRACE_TLS_KEY_PATH','AITRACE_LOGIN_MAX_ATTEMPTS','AITRACE_LOGIN_WINDOW_MS'
 ]);
 
 function integer(name, value, fallback, minimum, maximum) {
@@ -48,15 +49,18 @@ export function loadConfig({ env = process.env, args = process.argv.slice(2), ro
     database: databasePath(env.DATABASE_PATH, rootDir),
     distribution: resolve(rootDir, 'dist')
   });
-  const http = Object.freeze({ requestBodyLimitBytes, allowedHostnames, development: !production });
+  if(Boolean(env.AITRACE_TLS_CERT_PATH)!==Boolean(env.AITRACE_TLS_KEY_PATH))throw new Error('Configure both TLS certificate and key paths.');
+  const tls=env.AITRACE_TLS_CERT_PATH?Object.freeze({cert:resolve(rootDir,env.AITRACE_TLS_CERT_PATH),key:resolve(rootDir,env.AITRACE_TLS_KEY_PATH)}):null;
+  const http = Object.freeze({ requestBodyLimitBytes, allowedHostnames, development: !production, secure: Boolean(tls), loginMaxAttempts:integer('AITRACE_LOGIN_MAX_ATTEMPTS',env.AITRACE_LOGIN_MAX_ATTEMPTS,10,1,100), loginWindowMs:integer('AITRACE_LOGIN_WINDOW_MS',env.AITRACE_LOGIN_WINDOW_MS,900000,1000,86400000) });
 
   return Object.freeze({
     reminderIntervalMs: integer('AITRACE_REMINDER_INTERVAL_MS', env.AITRACE_REMINDER_INTERVAL_MS, 60000, 1000, 86400000),
     mode: production ? 'production' : 'development',
     production,
+    tls,
     bindHost,
     port,
-    publicUrl: `http://${bindHost}:${port}`,
+    publicUrl: `${tls?'https':'http'}://${bindHost}:${port}`,
     paths,
     http
   });

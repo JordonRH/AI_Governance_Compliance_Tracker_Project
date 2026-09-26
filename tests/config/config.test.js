@@ -31,3 +31,8 @@ test('host-header validation only permits configured local names and valid ports
   assert.equal(isAllowedHostHeader('localhost:99999', allowed), false);
   assert.equal(isAllowedHostHeader('localhost.evil.test', allowed), false);
 });
+test('TLS requires paired files and enables secure transport configuration',()=>{
+ assert.throws(()=>loadConfig({rootDir:process.cwd(),env:{AITRACE_TLS_CERT_PATH:'cert.pem'},args:[]}),/both TLS/);
+ const config=loadConfig({rootDir:process.cwd(),env:{AITRACE_TLS_CERT_PATH:'cert.pem',AITRACE_TLS_KEY_PATH:'key.pem'},args:['--production']});
+ assert.equal(config.http.secure,true);assert.ok(config.publicUrl.startsWith('https://'));assert.equal(config.http.development,false);
+});

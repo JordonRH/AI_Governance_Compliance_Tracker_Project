@@ -41,6 +41,7 @@ function publicPrincipal(row) {
     displayName: row.display_name,
     role: row.role,
     roleLabel: roleLabels[row.role],
+    mustChangePassword: Boolean(row.must_change_password),
     permissions: [...permissions[row.role]].sort()
   });
 }
@@ -70,6 +71,8 @@ export async function login(db, loginIdentifier, password, now = new Date()) {
   const stored = row ? Buffer.from(row.password_hash, 'hex') : Buffer.alloc(parameters.keyLength);
   const valid = stored.length === candidate.length && timingSafeEqual(stored, candidate);
   if (!row || !valid || row.status !== 'active') return null;
+  const current=db.prepare('SELECT password_hash,status FROM accounts WHERE id=?').get(row.id);
+  if(!current||current.status!=='active'||current.password_hash!==row.password_hash)return null;
   const token = randomBytes(32).toString('base64url');
   const createdAt = now.toISOString();
   const expiresAt = new Date(now.valueOf() + 8 * 60 * 60 * 1000).toISOString();
@@ -82,7 +85,7 @@ export function resolveRequestPrincipal(db, request, now = new Date()) {
   const token = parseCookies(request.headers.cookie)[cookieName];
   if (!token) return null;
   const current = now.toISOString();
-  const row = db.prepare(`SELECT s.id session_id, s.expires_at, a.id account_id, a.organization_id, a.display_name, a.role, a.status, o.name organization_name
+  const row = db.prepare(`SELECT s.id session_id, s.expires_at, a.id account_id, a.organization_id, a.display_name, a.role, a.status, a.must_change_password, o.name organization_name
     FROM sessions s JOIN accounts a ON a.id=s.account_id JOIN organizations o ON o.id=a.organization_id
     WHERE s.token_hash=? AND s.revoked_at IS NULL`).get(tokenHash(token));
   if (!row || row.status !== 'active' || row.expires_at <= current || !permissions[row.role]) return null;
@@ -127,7 +130,7 @@ export async function manageAccount(db, principal, accountId, change) {
   try {
     const row=check(), now=new Date().toISOString();
     if (change.kind==='password') {
-      db.prepare('UPDATE accounts SET password_salt=?,password_hash=?,password_cost=?,password_block_size=?,password_parallelization=?,updated_at=? WHERE id=? AND organization_id=?')
+      db.prepare('UPDATE accounts SET must_change_password=1,password_salt=?,password_hash=?,password_cost=?,password_block_size=?,password_parallelization=?,updated_at=? WHERE id=? AND organization_id=?')
         .run(salt.toString('hex'),hash.toString('hex'),parameters.cost,parameters.blockSize,parameters.parallelization,now,accountId,principal.organizationId);
     } else {
       if (accountId===principal.accountId && (change.role!=='administrator' || change.status!=='active')) fail('You cannot remove your own administrator access.');
@@ -142,4 +145,23 @@ export async function manageAccount(db, principal, accountId, change) {
       .run(principal.organizationId,principal.accountId,accountId,change.kind==='password'?'password-reset':`access:${change.role}:${change.status}`,now);
     db.exec('COMMIT');
   } catch(error) { db.exec('ROLLBACK'); throw error; }
+}
+
+export async function changeOwnPassword(db,principal,currentPassword,newPassword){
+  const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status})};
+  if(typeof newPassword!=='string'||newPassword.length<12||newPassword.length>200)fail('Password must contain 12 to 200 characters.');
+  if(newPassword===currentPassword)fail('Choose a different new password.');
+  const row=db.prepare("SELECT * FROM accounts WHERE id=? AND status='active'").get(principal.accountId);
+  if(!row)fail('Account is unavailable.',401);
+  const candidate=await derive(typeof currentPassword==='string'?currentPassword:'',Buffer.from(row.password_salt,'hex'),{...parameters,cost:row.password_cost,blockSize:row.password_block_size,parallelization:row.password_parallelization});
+  if(!timingSafeEqual(candidate,Buffer.from(row.password_hash,'hex')))fail('Current password was not accepted.');
+  const salt=randomBytes(16),hash=await derive(newPassword,salt),now=new Date().toISOString();
+  db.exec('BEGIN IMMEDIATE');
+  try{
+    const result=db.prepare("UPDATE accounts SET password_salt=?,password_hash=?,password_cost=?,password_block_size=?,password_parallelization=?,must_change_password=0,updated_at=? WHERE id=? AND password_hash=? AND status='active'").run(salt.toString('hex'),hash.toString('hex'),parameters.cost,parameters.blockSize,parameters.parallelization,now,row.id,row.password_hash);
+    if(!result.changes)fail('Account changed. Sign in again.',409);
+    db.prepare('UPDATE sessions SET revoked_at=? WHERE account_id=? AND revoked_at IS NULL').run(now,row.id);
+    db.prepare('INSERT INTO account_audit (organization_id,actor_id,account_id,action,created_at) VALUES (?,?,?,?,?)').run(row.organization_id,row.id,row.id,'password-change',now);
+    db.exec('COMMIT');
+  }catch(error){db.exec('ROLLBACK');throw error;}
 }

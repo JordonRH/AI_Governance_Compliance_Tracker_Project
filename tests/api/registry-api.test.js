@@ -171,3 +171,18 @@ test('registry decisions retain scoped change history',async()=>{
  assert.ok(history[0].changes.some(c=>c.field==='approvalStatus'&&c.to==='Approved'));
  assert.equal((await api(`/api/registry/${made.id}/history`,auth(otherCookie))).response.status,404);
 });
+
+test('reset accounts must change their password and old sessions are revoked',async()=>{
+ const id=await createAccount(db,{organizationId:'sme-a',organizationName:'Fictional SME A',login:'change@example.test',displayName:'Password change',role:'staff_user',password:'correct horse battery'});
+ await api(`/api/accounts/${id}/password`,auth(adminCookie,'POST',{password:'temporary long password'}));
+ const signed=await api('/api/auth/login',auth('','POST',{login:'change@example.test',password:'temporary long password'}));assert.equal(signed.body.principal.mustChangePassword,true);const cookie=signed.response.headers.get('set-cookie').split(';')[0];
+ assert.equal((await api('/api/registry',auth(cookie))).response.status,403);
+ assert.equal((await api('/api/auth/password',auth(cookie,'POST',{currentPassword:'wrong',newPassword:'a new personal password'}))).response.status,400);
+ assert.equal((await api('/api/auth/password',auth(cookie,'POST',{currentPassword:'temporary long password',newPassword:'a new personal password'}))).response.status,200);
+ assert.equal((await api('/api/registry',auth(cookie))).response.status,401);
+ const again=await api('/api/auth/login',auth('','POST',{login:'change@example.test',password:'a new personal password'}));assert.equal(again.body.principal.mustChangePassword,false);
+});
+test('sign-in throttling rejects repeated failures with a retry interval',async()=>{
+ const local=createServer(createApp(db,{...http,loginMaxAttempts:2}));await new Promise(ok=>local.listen(0,'127.0.0.1',ok));
+ try{for(let i=0;i<3;i++){const response=await fetch(`http://127.0.0.1:${local.address().port}/api/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:'rate-test',password:'wrong'})});assert.equal(response.status,i<2?401:429);if(i===2)assert.ok(response.headers.get('retry-after'));await response.text();}}finally{await new Promise(ok=>local.close(ok))}
+});

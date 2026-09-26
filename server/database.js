@@ -12,7 +12,7 @@ export function openDatabase(filename) {
     CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY);
   `);
   const version = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version ?? 0;
-  if (version > 9) { db.close(); throw new Error('Database schema is newer than this application.'); }
+  if (version > 10) { db.close(); throw new Error('Database schema is newer than this application.'); }
   if (version === 0) {
     db.exec(`
       BEGIN;
@@ -192,6 +192,11 @@ export function openDatabase(filename) {
     db.exec(`BEGIN;
       CREATE TABLE registry_events (id INTEGER PRIMARY KEY,organization_id TEXT NOT NULL REFERENCES organizations(id),ai_use_id TEXT NOT NULL REFERENCES ai_uses(id),actor_id TEXT NOT NULL REFERENCES accounts(id),changes_json TEXT NOT NULL,created_at TEXT NOT NULL) STRICT;
       INSERT INTO schema_migrations VALUES (9); COMMIT;`);
+  }
+  if (db.prepare('SELECT MAX(version) version FROM schema_migrations').get().version < 10) {
+    db.exec(`BEGIN;
+      ALTER TABLE accounts ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0 CHECK(must_change_password IN (0,1));
+      INSERT INTO schema_migrations VALUES (10); COMMIT;`);
   }
   return db;
 }

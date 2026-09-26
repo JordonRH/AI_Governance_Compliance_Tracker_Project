@@ -1,6 +1,12 @@
 import {test,expect} from '@playwright/test';
-async function login(page,login='admin@example.test',password='correct horse battery'){
-  await page.goto('/');await page.getByLabel('Login').fill(login);await page.getByLabel('Password').fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('navigation')).toBeVisible();
+async function login(page,identifier='admin@example.test',password='correct horse battery'){
+  await page.goto('/');await page.getByLabel('Login').fill(identifier);await page.getByLabel('Password').fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  if(password==='replacement test password'){
+    await expect(page.getByRole('heading',{name:'Change password',exact:true})).toBeVisible();
+    await page.getByLabel('Current password').fill(password);await page.getByLabel('New password').fill('final personal password');await page.getByLabel('Confirm password').fill('final personal password');await page.getByRole('button',{name:'Change password and sign out'}).click();
+    await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();await login(page,identifier,'final personal password');return;
+  }
+  await expect(page.getByRole('navigation')).toBeVisible();
 }
 test('administrator manages account passwords and access from the directory',async({page})=>{
   await login(page);await page.getByRole('button',{name:'Accounts',exact:true}).click();

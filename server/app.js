@@ -3,7 +3,7 @@ import {registerPolicies} from './policies.js';
 import {registerAssessments,assessmentSummary} from './assessments.js';
 import { randomUUID } from 'node:crypto';
 import express from 'express';
-import { manageAccount, createAccount, expiredSessionCookie, hasPermission, login, resolveRequestPrincipal, revokeRequestSession, sessionCookie } from './auth.js';
+import { changeOwnPassword, manageAccount, createAccount, expiredSessionCookie, hasPermission, login, resolveRequestPrincipal, revokeRequestSession, sessionCookie } from './auth.js';
 import { isAllowedHostHeader } from './config.js';
 import { approvalStatuses, dataSensitivities } from './registry-model.js';
 import { createComplianceCsv, createCompliancePdf } from './reporting.js';
@@ -51,7 +51,7 @@ export function createApp(db, http) {
     if (!req.headers.origin) return next();
     try {
       const origin = new URL(req.headers.origin);
-      if (origin.protocol === 'http:' && origin.host.toLowerCase() === req.headers.host.toLowerCase() && http.allowedHostnames.includes(origin.hostname.toLowerCase())) return next();
+      if (origin.protocol === (http.secure?'https:':'http:') && origin.host.toLowerCase() === req.headers.host.toLowerCase() && http.allowedHostnames.includes(origin.hostname.toLowerCase())) return next();
     } catch {}
     res.status(403).json({ error: 'Origin is not allowed.' });
   });
@@ -67,6 +67,19 @@ export function createApp(db, http) {
     next();
   });
   app.use('/api', (req, _res, next) => { req.principal = resolveRequestPrincipal(db, req); next(); });
+  app.use('/api',(req,res,next)=>{
+    if(req.principal?.mustChangePassword&&!['/auth/session','/auth/logout','/auth/password','/auth/login','/health'].includes(req.path))return res.status(403).json({error:'Change your password before continuing.'});
+    next();
+  });
+  const attempts=new Map();
+  const throttle=(req,res,next)=>{
+    const key=`${req.socket.remoteAddress}:${String(req.body?.login||req.principal?.accountId||'').trim().toLowerCase()}`,now=Date.now();
+    for(const [k,v] of attempts)if(v.expires<=now)attempts.delete(k);
+    if(attempts.size>=10000&&!attempts.has(key))return res.status(429).json({error:'Too many attempts. Try again later.'});
+    const record=attempts.get(key)||{count:0,expires:now+(http.loginWindowMs||900000)};
+    if(record.count>=(http.loginMaxAttempts||10))return res.status(429).set('Retry-After',String(Math.ceil((record.expires-now)/1000))).json({error:'Too many attempts. Try again later.'});
+    record.count++;attempts.set(key,record);req.loginAttemptKey=key;next();
+  };
   const requirePermission = permission => (req, res, next) => {
     if (!req.principal) return res.status(401).json({ error: 'Authentication is required.' });
     if (!hasPermission(req.principal, permission)) return res.status(403).json({ error: 'You do not have permission for this action.' });
@@ -78,20 +91,27 @@ export function createApp(db, http) {
   registerNotifications(app,db,requirePermission);
   app.get('/api/health', (_req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', mode: 'local-prototype' }); });
   app.get('/api/auth/session', (req, res) => res.json({ principal: req.principal }));
-  app.post('/api/auth/login', async (req, res, next) => {
+  app.post('/api/auth/login', throttle, async (req, res, next) => {
     try {
       const result = await login(db, req.body?.login, req.body?.password);
       if (!result) return res.status(401).json({ error: 'Login was not accepted.' });
-      res.setHeader('Set-Cookie', sessionCookie(result.token, result.expiresAt));
+      attempts.delete(req.loginAttemptKey);
+      res.setHeader('Set-Cookie', sessionCookie(result.token, result.expiresAt,http.secure));
       res.json({ principal: result.principal });
     } catch (error) { next(error); }
   });
   app.post('/api/auth/logout', (req, res) => {
     revokeRequestSession(db, req);
-    res.setHeader('Set-Cookie', expiredSessionCookie());
+    res.setHeader('Set-Cookie', expiredSessionCookie(http.secure));
     res.json({ status: 'signed-out' });
   });
 
+  app.post('/api/auth/password',requirePermission('registry:read'),throttle,async(req,res,next)=>{
+    try{await changeOwnPassword(db,req.principal,req.body?.currentPassword,req.body?.newPassword);attempts.delete(req.loginAttemptKey);res.setHeader('Set-Cookie',expiredSessionCookie(http.secure));res.json({status:'password-changed'});}catch(error){if(error.status)return res.status(error.status).json({error:error.message});next(error);}
+  });
+  app.get('/api/accounts/audit',requirePermission('account:manage'),(req,res)=>{
+    res.json({events:db.prepare('SELECT e.id,e.action,e.created_at,a.display_name actor,t.display_name target FROM account_audit e JOIN accounts a ON a.id=e.actor_id JOIN accounts t ON t.id=e.account_id WHERE e.organization_id=? ORDER BY e.id DESC LIMIT 200').all(req.principal.organizationId)});
+  });
   app.get('/api/accounts', requirePermission('account:manage'), (req,res)=>{
     const accounts=db.prepare('SELECT id,login,display_name,role,status,created_at,updated_at FROM accounts WHERE organization_id=? ORDER BY display_name,login').all(req.principal.organizationId).map(row=>({id:row.id,login:row.login,displayName:row.display_name,role:row.role,status:row.status,createdAt:row.created_at,updatedAt:row.updated_at}));
     res.json({accounts});

@@ -1,5 +1,7 @@
 import {deliverReminders} from './notifications.js';
 import { createServer } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
+import {readFileSync} from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -14,7 +16,7 @@ const config = loadConfig({ rootDir: root });
 if (config.production && !existsSync(resolve(config.paths.distribution, 'index.html'))) throw new Error('Run npm run build before npm run start.');
 const db = openDatabase(config.paths.database);
 const app = createApp(db, config.http);
-const server = createServer(app);
+const server = config.tls ? createHttpsServer({cert:readFileSync(config.tls.cert),key:readFileSync(config.tls.key)},app) : createServer(app);
 let vite;
 const deliver=()=>{try{deliverReminders(db)}catch(error){console.error('Reminder delivery failed; will retry on next scheduled run.')}};
 deliver();
