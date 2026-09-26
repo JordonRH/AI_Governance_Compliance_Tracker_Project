@@ -12,7 +12,7 @@ export function openDatabase(filename) {
     CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY);
   `);
   const version = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version ?? 0;
-  if (version > 4) { db.close(); throw new Error('Database schema is newer than this application.'); }
+  if (version > 5) { db.close(); throw new Error('Database schema is newer than this application.'); }
   if (version === 0) {
     db.exec(`
       BEGIN;
@@ -146,6 +146,18 @@ export function openDatabase(filename) {
       ) STRICT;
       INSERT INTO schema_migrations(version) VALUES (4);
       COMMIT;`);
+  }
+  if (db.prepare('SELECT MAX(version) version FROM schema_migrations').get().version < 5) {
+    db.exec(`BEGIN;
+      CREATE TABLE assessments (
+        id TEXT PRIMARY KEY, organization_id TEXT NOT NULL REFERENCES organizations(id),
+        ai_use_id TEXT NOT NULL REFERENCES ai_uses(id), created_by TEXT NOT NULL REFERENCES accounts(id),
+        state TEXT NOT NULL CHECK(state IN ('Draft','Submitted')), revision INTEGER NOT NULL,
+        definition_json TEXT NOT NULL, responses_json TEXT NOT NULL, result_json TEXT,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX assessments_scope ON assessments(organization_id,ai_use_id,updated_at);
+      INSERT INTO schema_migrations VALUES (5); COMMIT;`);
   }
   return db;
 }

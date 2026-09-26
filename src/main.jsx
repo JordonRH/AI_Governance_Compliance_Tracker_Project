@@ -1,32 +1,15 @@
 import React, { useEffect, useState, useId } from 'react';
 import { createRoot } from 'react-dom/client';
+import {Field,FormNote} from './forms.jsx';
+import {api,json} from './api.js';
+import {AssessmentsPage} from './workflows.jsx';
 import './styles.css';
 import './themes.css';
 
 const blankRecord = { name:'', owner:'', businessArea:'', purpose:'', dataDescription:'', dataSensitivity:'Not classified', approvalStatus:'Not reviewed' };
-function Field({children}) {
-  const id = useId();
-  const control = React.Children.toArray(children).find(child => React.isValidElement(child));
-  const label = React.Children.toArray(children).filter(child => !React.isValidElement(child));
-  const required = Boolean(control?.props.required);
-  return <div className={`field ${control?.type === 'textarea' ? 'field-wide' : ''}`}>
-    <label htmlFor={id}>{label}{required && <span className="required-mark" aria-hidden="true"> *</span>}</label>
-    {React.cloneElement(control, {id, 'aria-describedby': control.props.minLength ? `${id}-hint` : undefined})}
-    {control.props.minLength && <small id={`${id}-hint`}>Use {control.props.minLength} to {control.props.maxLength} characters.</small>}
-  </div>;
-}
-function FormNote(){return <p className="form-note">Fields marked <span className="required-mark">*</span> are required.</p>}
 function Brand(){return <div className="brand"><span className="brand-mark" aria-hidden="true">A</span><span>AITrace<small>AI governance workspace</small></span></div>}
 
 
-async function api(path, options={}) {
-  const response=await fetch(`/api${path}`,options);
-  const type=response.headers.get('content-type') || '';
-  const body=type.includes('application/json') ? await response.json() : await response.blob();
-  if(!response.ok) throw Object.assign(new Error(body.error || 'Request failed.'),{fields:body.fields});
-  return body;
-}
-const json = (method, body) => ({ method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
 
 function Login({onLogin}) {
   const [form,setForm]=useState({login:'',password:''}),[error,setError]=useState(''),[busy,setBusy]=useState(false);
@@ -113,7 +96,7 @@ function App(){
   async function download(format){try{const blob=await api(`/reports/compliance.${format}`);const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`aitrace-compliance-summary.${format}`;a.click();URL.revokeObjectURL(url);}catch(e){setError(e.message)}}
   if(principal===undefined)return <main className="content"><p>Loading...</p></main>;
   if(!principal)return <><header className="topbar"><Brand/><button aria-pressed={theme==='dark'} onClick={()=>setTheme(theme==='dark'?'light':'dark')}>{theme==='dark'?'Light':'Dark'} theme</button></header><Login onLogin={setPrincipal}/></>;
-  return <div className="app-shell"><a className="skip-link" href="#main-content">Skip to content</a><aside className="sidebar"><Brand/><p className="workspace-label">WORKSPACE</p><p className="organisation-name">{principal.organizationName}</p><nav aria-label="Main navigation">{['overview','registry','report','guide',...(can('account:manage')?['accounts','settings']:[])].map(item=><button key={item} aria-current={page===item?'page':undefined} onClick={()=>setPage(item)}>{item==='settings'?'Appearance':item==='report'?'Disclose AI use':item[0].toUpperCase()+item.slice(1)}</button>)}</nav><div className="sidebar-footer"><span className="sidebar-tag">SME GOVERNANCE</span><p>Responsible AI starts<br/>with visibility.</p></div></aside>
+  return <div className="app-shell"><a className="skip-link" href="#main-content">Skip to content</a><aside className="sidebar"><Brand/><p className="workspace-label">WORKSPACE</p><p className="organisation-name">{principal.organizationName}</p><nav aria-label="Main navigation">{['overview','registry','assessments','report','guide',...(can('account:manage')?['accounts','settings']:[])].map(item=><button key={item} aria-current={page===item?'page':undefined} onClick={()=>setPage(item)}>{item==='settings'?'Appearance':item==='report'?'Disclose AI use':item[0].toUpperCase()+item.slice(1)}</button>)}</nav><div className="sidebar-footer"><span className="sidebar-tag">SME GOVERNANCE</span><p>Responsible AI starts<br/>with visibility.</p></div></aside>
     <div className="workspace"><header className="topbar"><div><strong>{principal.displayName}</strong><span className="role-label">{principal.roleLabel}</span></div><div><button aria-pressed={theme==='dark'} onClick={()=>setTheme(theme==='dark'?'light':'dark')}>{theme==='dark'?'Light':'Dark'} theme</button><button onClick={logout}>Sign out</button></div></header>
     <main id="main-content" tabIndex="-1" className="content">{error&&<p className="error" role="alert">{error}</p>}
       {page==='overview'&&<><p className="eyebrow">Organisation governance overview</p><h1>AI use at a glance</h1><p className="subtitle">A clearer view of the tools, responsibilities, and next steps across your organisation.</p><div className="stat-grid"><article className="stat-card"><span>Recorded uses</span><strong>{overview?.total??0}</strong></article><article className="stat-card"><span>Not assessed</span><strong>{overview?.unassessed??0}</strong></article>{overview?.actions?.status==="available"&&<article className="stat-card"><span>Outstanding actions</span><strong>{overview.actions.outstanding}</strong><small>{overview.actions.overdue} overdue</small></article>}</div><div className="overview-grid"><section className="panel"><p className="eyebrow">Across your organisation</p><h2>AI use by business area</h2>{Object.entries(overview?.byBusinessArea||{}).map(([area,count])=><div className="area" key={area}><div><span>{area}</span><strong>{count} {count===1?'use':'uses'}</strong></div><div className="bar"><span style={{width:`${count / Math.max(overview.total,1) * 100}%`}}/></div></div>)}{!records.length&&<div className="empty"><h3>Your overview starts here</h3><p>Add your first AI use to see which parts of your business are using AI.</p></div>}</section><section className="panel next-step"><p className="eyebrow">Your next step</p><h2>Make AI use visible</h2><p>A useful register starts with the basics: the tool, the person responsible, and the data it handles.</p><button className="primary" onClick={()=>setPage('registry')}>Open the registry</button><button className="text-button" onClick={()=>setPage('guide')}>Read the getting started guide</button></section></div></>}
@@ -123,6 +106,7 @@ function App(){
       {page==='report'&&<><p className="eyebrow">Shadow AI self-reporting</p><h1>Disclose an AI tool</h1><p className="subtitle">Tell your organisation about an AI tool that is not yet formally registered. This does not automatically approve the tool.</p><section className="panel"><form onSubmit={shadow} className="record-form"><FormNote/>
         <Field>AI tool or use case<input name="name" required maxLength="120"/></Field><Field>Business area<input name="businessArea" required maxLength="120"/></Field><Field>Purpose<textarea name="purpose" required maxLength="2000"/></Field><Field>Data handled<textarea name="dataDescription" required maxLength="1000"/></Field><Field>Data sensitivity<select name="dataSensitivity"><option>Not classified</option><option>Public</option><option>Internal</option><option>Confidential</option><option>Sensitive</option></select></Field><button className="primary">Submit disclosure</button>
       </form></section></>}
+      {page==='assessments'&&<AssessmentsPage principal={principal} records={records} onChanged={load}/>}
       {page==='accounts'&&<AccountsPage principal={principal} onSessionEnded={()=>{setPrincipal(null);setPage('overview')}}/>}
       {page==='settings'&&can('account:manage')&&<SettingsPage appearance={appearance} onAppearance={setAppearance}/>}
       {page==='guide'&&<><p className="eyebrow">Prototype guidance</p><h1>How AITrace works</h1><p className="subtitle">A practical starting point for responsible AI use in your business.</p><section className="panel prose"><h2>A simple governance workflow</h2><ol><li><strong>Record the tools you use.</strong> Capture the purpose, owner, and business area.</li><li><strong>Understand the data.</strong> Describe what information each tool handles.</li><li><strong>Review and follow up.</strong> Check approval status and export a summary for your team.</li></ol><p>Register or disclose AI uses, document their purpose and data sensitivity, complete an approved governance assessment, track resulting actions, and export an organisation summary.</p><p>AITrace supports self-assessment. It does not provide legal advice, certification or automatic compliance approval.</p><p>Use fictional or appropriately de-identified information during development and demonstration.</p></section></>}

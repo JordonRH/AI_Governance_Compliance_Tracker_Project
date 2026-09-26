@@ -1,3 +1,4 @@
+import {registerAssessments,assessmentSummary} from './assessments.js';
 import { randomUUID } from 'node:crypto';
 import express from 'express';
 import { manageAccount, createAccount, expiredSessionCookie, hasPermission, login, resolveRequestPrincipal, revokeRequestSession, sessionCookie } from './auth.js';
@@ -69,6 +70,7 @@ export function createApp(db, http) {
     next();
   };
 
+  registerAssessments(app,db,requirePermission);
   app.get('/api/health', (_req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', mode: 'local-prototype' }); });
   app.get('/api/auth/session', (req, res) => res.json({ principal: req.principal }));
   app.post('/api/auth/login', async (req, res, next) => {
@@ -120,7 +122,7 @@ export function createApp(db, http) {
     const conditions = ['organization_id = ?'], values = [req.principal.organizationId];
     if (q) { conditions.push('(name LIKE ? OR owner LIKE ? OR purpose LIKE ?)'); values.push(`%${q}%`, `%${q}%`, `%${q}%`); }
     if (businessArea) { conditions.push('business_area = ?'); values.push(businessArea); }
-    res.json({ records: db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE ${conditions.join(' AND ')} ORDER BY updated_at DESC, id DESC`).all(...values).map(map) });
+    res.json({ records: db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE ${conditions.join(' AND ')} ORDER BY updated_at DESC, id DESC`).all(...values).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record)) });
   });
   app.get('/api/registry/:id', requirePermission('registry:read'), (req, res) => {
     const row = db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE id=? AND organization_id=?`).get(req.params.id, req.principal.organizationId);
@@ -198,22 +200,22 @@ export function createApp(db, http) {
     res.status(result.status==='invalid'?400:200).json(result);
   });
   app.get('/api/dashboard', requirePermission('registry:read'), (req,res)=>{
-    const registry=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=?`).all(req.principal.organizationId).map(map);
+    const registry=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=?`).all(req.principal.organizationId).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record));
     const areas=[...new Set(registry.map(record=>record.businessArea))].sort();
     if(!/^\d{4}-\d{2}-\d{2}$/.test(req.query.asOfDate || new Date().toISOString().slice(0,10)) || Number.isNaN(Date.parse(req.query.asOfDate || new Date().toISOString()))) return res.status(400).json({error:'A valid date is required.'});
     if(areas.length===0) areas.push('No records');
-    const records=registry.map(record=>({id:record.id,institutionId:record.organizationId,category:record.businessArea,assessmentStatus:record.assessmentStatus}));
+    const records=registry.map(record=>({id:record.id,institutionId:record.organizationId,category:record.businessArea,assessmentStatus:record.assessmentStatus,...(record.riskOutcome?{riskOutcome:record.riskOutcome}:{})}));
     const actions=db.prepare('SELECT * FROM governance_actions WHERE organization_id=?').all(req.principal.organizationId).map(actionFromRow);
     const snapshot=buildDashboardSnapshot({id:req.principal.organizationId,institutionIds:[req.principal.organizationId],categories:areas,includeRiskSummary:hasPermission(req.principal,'assessment:review'),includeActionSummary:hasPermission(req.principal,'action:manage')},records,actions,{asOfDate:req.query.asOfDate||new Date().toISOString().slice(0,10)});
     res.status(snapshot.status==='invalid'?400:200).json(snapshot);
   });
 
   app.get('/api/reports/compliance.csv', requirePermission('report:export'), (req,res)=>{
-    const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map);
+    const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record));
     res.type('text/csv').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.csv"').send(createComplianceCsv(records));
   });
   app.get('/api/reports/compliance.pdf', requirePermission('report:export'), (req,res)=>{
-    const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map);
+    const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record));
     res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.pdf"').send(createCompliancePdf(records,req.principal.organizationName));
   });
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API route was not found.' }));

@@ -113,3 +113,17 @@ test('empty dashboard still enforces role summaries and validates dates',async()
   assert.equal(dashboard.body.risk.status,'restricted');assert.equal(dashboard.body.actions.status,'restricted');
   assert.equal((await api('/api/dashboard?asOfDate=2026-02-31',auth(cookie))).response.status,400);
 });
+
+test('assessment drafts enforce scope and revision, submit immutable explainable results',async()=>{
+ const record=(await api('/api/registry',auth(adminCookie,'POST',valid))).body;
+ const made=await api('/api/assessments',auth(adminCookie,'POST',{aiUseId:record.id}));assert.equal(made.response.status,201);const id=made.body.id;
+ assert.equal((await api(`/api/assessments/${id}`,auth(otherCookie,'PUT',{expectedRevision:1,responses:{}}))).response.status,404);
+ assert.equal((await api(`/api/assessments/${id}`,auth(staffCookie,'PUT',{expectedRevision:1,responses:{}}))).response.status,404);
+ assert.equal((await api(`/api/assessments/${id}`,auth(adminCookie,'PUT',{expectedRevision:1,responses:{},submit:true}))).response.status,400);
+ const responses={personalData:true,humanOversight:false,tested:true,disclosed:true};
+ const saved=await api(`/api/assessments/${id}`,auth(adminCookie,'PUT',{expectedRevision:1,responses}));assert.equal(saved.body.revision,2);
+ assert.equal((await api(`/api/assessments/${id}`,auth(adminCookie,'PUT',{expectedRevision:1,responses}))).response.status,409);
+ const submitted=await api(`/api/assessments/${id}`,auth(adminCookie,'PUT',{expectedRevision:2,responses,submit:true}));assert.equal(submitted.body.result.outcome.id,'high');assert.ok(submitted.body.result.triggeredRules.length);
+ assert.equal((await api(`/api/assessments/${id}`,auth(adminCookie,'PUT',{expectedRevision:3,responses}))).response.status,409);
+ assert.equal((await api('/api/registry',auth(adminCookie))).body.records.find(r=>r.id===record.id).assessmentStatus,'Assessed');
+});
