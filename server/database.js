@@ -12,7 +12,7 @@ export function openDatabase(filename) {
     CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY);
   `);
   const version = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version ?? 0;
-  if (version > 6) { db.close(); throw new Error('Database schema is newer than this application.'); }
+  if (version > 7) { db.close(); throw new Error('Database schema is newer than this application.'); }
   if (version === 0) {
     db.exec(`
       BEGIN;
@@ -163,6 +163,18 @@ export function openDatabase(filename) {
     db.exec(`BEGIN;
       ALTER TABLE governance_actions ADD COLUMN owner_account_id TEXT REFERENCES accounts(id);
       INSERT INTO schema_migrations VALUES (6); COMMIT;`);
+  }
+  if (db.prepare('SELECT MAX(version) version FROM schema_migrations').get().version < 7) {
+    db.exec(`BEGIN;
+      CREATE TABLE policies (
+        id TEXT PRIMARY KEY, organization_id TEXT NOT NULL REFERENCES organizations(id),
+        document_id TEXT NOT NULL, version INTEGER NOT NULL, title TEXT NOT NULL,
+        filename TEXT NOT NULL, media_type TEXT NOT NULL, content BLOB NOT NULL, sha256 TEXT NOT NULL,
+        checklist_json TEXT NOT NULL, reviewer_id TEXT NOT NULL REFERENCES accounts(id),
+        review_due TEXT NOT NULL, reviewed_at TEXT, created_by TEXT NOT NULL REFERENCES accounts(id),
+        created_at TEXT NOT NULL, UNIQUE(organization_id,document_id,version)
+      ) STRICT;
+      INSERT INTO schema_migrations VALUES (7); COMMIT;`);
   }
   return db;
 }

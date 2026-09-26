@@ -138,3 +138,15 @@ test('action owners and assessment links cannot cross organisations',async()=>{
  assert.equal((await api('/api/actions',auth(otherCookie))).body.actions.length,0);
  assert.equal((await api('/api/actions',auth(adminCookie,'POST',{...input,assessmentId:'missing'}))).response.status,400);
 });
+
+test('policy uploads are validated, scoped, versioned and downloadable',async()=>{
+ const reviewerId=db.prepare("SELECT id FROM accounts WHERE login='admin@example.test'").get().id;
+ const body={title:'Fictional policy',filename:'policy.txt',mediaType:'text/plain',content:Buffer.from('Fictional usage guidance.').toString('base64'),checklist:['humanOversight'],reviewerId,reviewDue:'2026-12-01'};
+ assert.equal((await api('/api/policies',auth(staffCookie,'POST',body))).response.status,403);
+ assert.equal((await api('/api/policies',auth(adminCookie,'POST',{...body,filename:'../policy.txt'}))).response.status,400);
+ assert.equal((await api('/api/policies',auth(adminCookie,'POST',{...body,filename:'fake.pdf',mediaType:'application/pdf'}))).response.status,400);
+ const made=await api('/api/policies',auth(adminCookie,'POST',body));assert.equal(made.response.status,201);
+ assert.equal((await api(`/api/policies/${made.body.id}/download`,auth(otherCookie))).response.status,404);
+ const download=await api(`/api/policies/${made.body.id}/download`,auth(staffCookie));assert.equal(Buffer.from(download.body).toString(),'Fictional usage guidance.');
+ const revised=await api('/api/policies',auth(adminCookie,'POST',{...body,documentId:made.body.documentId}));assert.equal(revised.body.version,2);
+});

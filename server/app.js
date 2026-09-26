@@ -1,3 +1,4 @@
+import {registerPolicies} from './policies.js';
 import {registerAssessments,assessmentSummary} from './assessments.js';
 import { randomUUID } from 'node:crypto';
 import express from 'express';
@@ -53,6 +54,7 @@ export function createApp(db, http) {
     } catch {}
     res.status(403).json({ error: 'Origin is not allowed.' });
   });
+  app.use('/api/policies', express.json({limit:'1500kb',strict:true}));
   app.use('/api', express.json({ limit: http.requestBodyLimitBytes, strict: true, type: 'application/json' }));
   app.use('/api', (error, _req, res, next) => {
     if (error?.type === 'entity.too.large') return res.status(413).json({ error: 'Request body is too large.' });
@@ -71,6 +73,7 @@ export function createApp(db, http) {
   };
 
   registerAssessments(app,db,requirePermission);
+  registerPolicies(app,db,requirePermission);
   app.get('/api/health', (_req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', mode: 'local-prototype' }); });
   app.get('/api/auth/session', (req, res) => res.json({ principal: req.principal }));
   app.post('/api/auth/login', async (req, res, next) => {
