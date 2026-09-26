@@ -223,16 +223,23 @@ export function createApp(db, http) {
     const records=registry.map(record=>({id:record.id,institutionId:record.organizationId,category:record.businessArea,assessmentStatus:record.assessmentStatus,...(record.riskOutcome?{riskOutcome:record.riskOutcome}:{})}));
     const actions=db.prepare('SELECT * FROM governance_actions WHERE organization_id=?').all(req.principal.organizationId).map(actionFromRow);
     const snapshot=buildDashboardSnapshot({id:req.principal.organizationId,institutionIds:[req.principal.organizationId],categories:areas,includeRiskSummary:hasPermission(req.principal,'assessment:review'),includeActionSummary:hasPermission(req.principal,'action:manage')},records,actions,{asOfDate:req.query.asOfDate||new Date().toISOString().slice(0,10)});
-    res.status(snapshot.status==='invalid'?400:200).json(snapshot);
+    const policySummary=hasPermission(req.principal,'action:manage')?{status:'available',...db.prepare("SELECT COUNT(*) total,SUM(CASE WHEN review_due < ? THEN 1 ELSE 0 END) overdue FROM policies p WHERE organization_id=? AND version=(SELECT MAX(version) FROM policies q WHERE q.document_id=p.document_id AND q.organization_id=p.organization_id)").get(req.query.asOfDate||new Date().toISOString().slice(0,10),req.principal.organizationId)}:{status:'restricted'};
+    res.status(snapshot.status==='invalid'?400:200).json({...snapshot,policies:policySummary});
   });
 
-  app.get('/api/reports/compliance.csv', requirePermission('report:export'), (req,res)=>{
+  function reportDetails(org){
+    const assessments=db.prepare("SELECT a.*,u.name ai_use_name,c.display_name author FROM assessments a JOIN ai_uses u ON u.id=a.ai_use_id JOIN accounts c ON c.id=a.created_by WHERE a.organization_id=? AND a.state='Submitted' ORDER BY a.updated_at DESC").all(org).map(a=>{const r=JSON.parse(a.result_json),d=JSON.parse(a.definition_json);return {aiUseName:a.ai_use_name,author:a.author,state:a.state,risk:r.outcome.label,definitionVersion:`${d.id}/${d.version}`,explanations:r.triggeredRules.map(x=>x.explanation).join(' '),updatedAt:a.updated_at}});
+    const actions=db.prepare('SELECT a.*,u.name ai_use_name FROM governance_actions a JOIN ai_uses u ON u.id=a.ai_use_id WHERE a.organization_id=? ORDER BY due_date').all(org).map(a=>({...actionFromRow(a),aiUseName:a.ai_use_name}));
+    const policies=db.prepare('SELECT p.*,a.display_name reviewer FROM policies p JOIN accounts a ON a.id=p.reviewer_id WHERE p.organization_id=? ORDER BY title,version DESC').all(org).map(p=>({title:p.title,reviewer:p.reviewer,reviewDue:p.review_due,reviewedAt:p.reviewed_at,filename:p.filename,version:p.version,checklist:JSON.parse(p.checklist_json).join(', '),createdAt:p.created_at}));
+    return {assessments,actions,policies};
+  }
+  app.get('/api/reports/compliance.csv', requirePermission('report:export'), async (req,res)=>{
     const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record));
-    res.type('text/csv').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.csv"').send(createComplianceCsv(records));
+    res.type('text/csv').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.csv"').send(createComplianceCsv(records,reportDetails(req.principal.organizationId)));
   });
-  app.get('/api/reports/compliance.pdf', requirePermission('report:export'), (req,res)=>{
+  app.get('/api/reports/compliance.pdf', requirePermission('report:export'), async (req,res)=>{
     const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record));
-    res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.pdf"').send(createCompliancePdf(records,req.principal.organizationName));
+    res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.pdf"').send(await createCompliancePdf(records,req.principal.organizationName,new Date().toISOString(),reportDetails(req.principal.organizationId)));
   });
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API route was not found.' }));
   app.use('/api', (error, _req, res, _next) => { console.error(error.message); res.status(500).json({error:'The request could not be completed. Please try again.'}); });

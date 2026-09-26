@@ -1,28 +1,42 @@
-const csvCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
-export function createComplianceCsv(records) {
-  const headings=['Name','Purpose','Owner','Business area','Data sensitivity','Approval status','Assessment status','Source','Updated at'];
-  return [headings,...records.map(record=>[record.name,record.purpose,record.owner,record.businessArea,record.dataSensitivity,record.approvalStatus,record.assessmentStatus,record.source,record.updatedAt])].map(row=>row.map(csvCell).join(',')).join('\r\n');
+﻿import PDFDocument from 'pdfkit';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+const fontPath=require.resolve('@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff');
+const csvCell=value=>{
+ let text=String(value??'');
+ if(/^[\s\u0000-\u001f]*[=+@-]/.test(text)||/^[\t\r\n]/.test(text))text="'"+text;
+ return `"${text.replaceAll('"','""')}"`;
+};
+export function createComplianceCsv(records,details={}){
+ const headings=['Type','Name','Purpose / details','Owner / reviewer','Business area','Data sensitivity','Approval status','Assessment status','Risk result','Status','Due date','Version','Source','Updated at'];
+ const rows=records.map(r=>['AI use',r.name,r.purpose,r.owner,r.businessArea,r.dataSensitivity,r.approvalStatus,r.assessmentStatus,r.riskOutcome?.label,'','', '',r.source,r.updatedAt]);
+ for(const a of details.assessments||[])rows.push(['Assessment',a.aiUseName,a.explanations,a.author,'','','',a.state,a.risk,'','',a.definitionVersion,'Demonstration only',a.updatedAt]);
+ for(const a of details.actions||[])rows.push(['Action',a.title,a.aiUseName,a.owner,'','','','', '',a.status,a.dueDate,a.version,'Action tracker',a.updatedAt]);
+ for(const p of details.policies||[])rows.push(['Policy',p.title,p.checklist,p.reviewer,'','','','','',p.reviewedAt?'Reviewed':'Review pending',p.reviewDue,p.version,p.filename,p.createdAt]);
+ return '\uFEFF'+[headings,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
 }
-function safeText(value){return String(value).replaceAll('\\','\\\\').replaceAll('(','\\(').replaceAll(')','\\)').replace(/[^\x20-\x7E]/g,'?');}
-export function createCompliancePdf(records, organizationName, generatedAt=new Date().toISOString()) {
-  const rows=records.map(record=>`${record.name} | ${record.businessArea} | ${record.dataSensitivity} | ${record.approvalStatus} | ${record.assessmentStatus}`);
-  const chunks=[];for(let index=0;index<Math.max(rows.length,1);index+=40)chunks.push(rows.slice(index,index+40));
-  const pageCount=chunks.length,fontId=3+pageCount*2,objects=[];
-  objects[1]='<< /Type /Catalog /Pages 2 0 R >>';
-  const pageIds=chunks.map((_,index)=>3+index*2);
-  objects[2]=`<< /Type /Pages /Kids [${pageIds.map(id=>`${id} 0 R`).join(' ')}] /Count ${pageCount} >>`;
-  chunks.forEach((chunk,index)=>{
-    const pageId=3+index*2,contentId=pageId+1;
-    const lines=[`AI governance compliance summary - ${organizationName}`,`Generated ${generatedAt}`,`Recorded AI uses: ${records.length} | Page ${index+1} of ${pageCount}`,'',...(chunk.length?chunk:['No AI uses recorded.'])];
-    const stream=['BT','/F1 9 Tf','42 800 Td',...lines.flatMap((line,lineIndex)=>lineIndex?['0 -17 Td',`(${safeText(line)}) Tj`]:[`(${safeText(line)}) Tj`]),'ET'].join('\n');
-    objects[pageId]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`;
-    objects[contentId]=`<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`;
-  });
-  objects[fontId]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
-  let output='%PDF-1.4\n',offsets=[0];
-  for(let id=1;id<=fontId;id++){offsets[id]=Buffer.byteLength(output);output+=`${id} 0 obj\n${objects[id]}\nendobj\n`;}
-  const xref=Buffer.byteLength(output);output+=`xref\n0 ${fontId+1}\n0000000000 65535 f \n`;
-  for(let id=1;id<=fontId;id++)output+=`${String(offsets[id]).padStart(10,'0')} 00000 n \n`;
-  output+=`trailer\n<< /Size ${fontId+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-  return Buffer.from(output);
+export async function createCompliancePdf(records,organizationName,generatedAt=new Date().toISOString(),details={}){
+ const doc=new PDFDocument({size:'A4',margin:45,bufferPages:true,info:{Title:'AITrace governance summary',Author:'AITrace'}}),chunks=[];
+ const done=new Promise((resolve,reject)=>{doc.on('data',c=>chunks.push(c));doc.on('end',()=>resolve(Buffer.concat(chunks)));doc.on('error',reject)});
+ doc.font(fontPath);
+ const heading=(title)=>{if(doc.y>690)doc.addPage();doc.moveDown(.6).fontSize(15).fillColor('#00306e').text(title).moveDown(.4).fontSize(10).fillColor('#172742')};
+ const paragraph=text=>{doc.fontSize(10).fillColor('#172742').text(String(text),{width:505,lineGap:3}).moveDown(.5)};
+ doc.fontSize(22).fillColor('#00306e').text('AI governance summary');
+ paragraph(organizationName);paragraph(`Generated ${generatedAt}`);
+ paragraph('Prototype self-assessment evidence. Demonstration risk rules are not sponsor-approved policy, legal advice, or compliance certification.');
+ paragraph(`${records.length} AI uses | ${(details.actions||[]).length} actions | ${(details.policies||[]).length} policy versions`);
+ heading('AI use register');
+ if(!records.length)paragraph('No AI uses recorded.');
+ for(const r of records){heading(r.name);paragraph(`Area: ${r.businessArea} | Owner: ${r.owner}`);paragraph(`Purpose: ${r.purpose}`);paragraph(`Data sensitivity: ${r.dataSensitivity} | Approval: ${r.approvalStatus}`);paragraph(`Assessment: ${r.assessmentStatus} | Risk: ${r.riskOutcome?.label||'Not assessed'}`)}
+ heading('Assessment evidence');
+ if(!details.assessments?.length)paragraph('No submitted assessments.');
+ for(const a of details.assessments||[]){heading(a.aiUseName);paragraph(`Definition: ${a.definitionVersion} | Risk: ${a.risk}`);paragraph(a.explanations)}
+ heading('Compliance actions');
+ if(!details.actions?.length)paragraph('No actions recorded.');
+ for(const a of details.actions||[]){heading(a.title);paragraph(`${a.aiUseName} | ${a.status} | Due ${a.dueDate}`);paragraph(`Owner: ${a.owner} | Revision ${a.version}`)}
+ heading('Policy evidence');
+ if(!details.policies?.length)paragraph('No policy versions recorded.');
+ for(const p of details.policies||[]){heading(`${p.title} / version ${p.version}`);paragraph(`Reviewer: ${p.reviewer} | Review due: ${p.reviewDue}`);paragraph(`File: ${p.filename} | Checklist topics: ${p.checklist||'None'}`)}
+ const range=doc.bufferedPageRange();for(let i=0;i<range.count;i++){doc.switchToPage(i);doc.fontSize(8).fillColor('#586b85').text(`AITrace | Page ${i+1} of ${range.count}`,45,805,{lineBreak:false})}
+ doc.end();return done;
 }
