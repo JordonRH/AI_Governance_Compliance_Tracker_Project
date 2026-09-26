@@ -54,3 +54,5 @@ Research documents are review inputs. They do not establish sponsor policy, lega
 - `data/`: ignored local SQLite data.
 - `test-results/`: ignored generated browser-test evidence; disposable Playwright output stays in `test-results/playwright/` so retained review screenshots do not conflict with runner cleanup.
 - Root: application entry points, package metadata and tool configuration only.
+
+- [GitHub/repository reconciliation, 27 September 2026](project/github-reconciliation-2026-09-27.md)
