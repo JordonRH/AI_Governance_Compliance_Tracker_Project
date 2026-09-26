@@ -12,7 +12,7 @@ export function openDatabase(filename) {
     CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY);
   `);
   const version = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version ?? 0;
-  if (version > 7) { db.close(); throw new Error('Database schema is newer than this application.'); }
+  if (version > 8) { db.close(); throw new Error('Database schema is newer than this application.'); }
   if (version === 0) {
     db.exec(`
       BEGIN;
@@ -175,6 +175,18 @@ export function openDatabase(filename) {
         created_at TEXT NOT NULL, UNIQUE(organization_id,document_id,version)
       ) STRICT;
       INSERT INTO schema_migrations VALUES (7); COMMIT;`);
+  }
+  if (db.prepare('SELECT MAX(version) version FROM schema_migrations').get().version < 8) {
+    db.exec(`BEGIN;
+      CREATE TABLE reminder_settings (organization_id TEXT PRIMARY KEY REFERENCES organizations(id), enabled INTEGER NOT NULL, upcoming_days INTEGER NOT NULL, repeat_days INTEGER NOT NULL) STRICT;
+      CREATE TABLE notifications (
+        id TEXT PRIMARY KEY, organization_id TEXT NOT NULL REFERENCES organizations(id),
+        account_id TEXT NOT NULL REFERENCES accounts(id), dedupe_key TEXT NOT NULL UNIQUE,
+        kind TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL,
+        delivered_at TEXT NOT NULL, read_at TEXT
+      ) STRICT;
+      CREATE TABLE reminder_runs (id INTEGER PRIMARY KEY, started_at TEXT NOT NULL, status TEXT NOT NULL, delivered INTEGER NOT NULL, error TEXT) STRICT;
+      INSERT INTO schema_migrations VALUES (8); COMMIT;`);
   }
   return db;
 }

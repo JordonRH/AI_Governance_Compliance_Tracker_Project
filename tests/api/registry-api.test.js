@@ -150,3 +150,16 @@ test('policy uploads are validated, scoped, versioned and downloadable',async()=
  const download=await api(`/api/policies/${made.body.id}/download`,auth(staffCookie));assert.equal(Buffer.from(download.body).toString(),'Fictional usage guidance.');
  const revised=await api('/api/policies',auth(adminCookie,'POST',{...body,documentId:made.body.documentId}));assert.equal(revised.body.version,2);
 });
+
+test('reminders deliver once to recipients and enforce inbox isolation',async()=>{
+ const {deliverReminders}=await import('../../server/notifications.js');
+ const staff=db.prepare("SELECT id FROM accounts WHERE login='staff@example.test'").get();
+ const record=(await api('/api/registry',auth(adminCookie,'POST',valid))).body;
+ await api('/api/actions',auth(adminCookie,'POST',{aiUseId:record.id,title:'Reminder fixture',ownerAccountId:staff.id,dueDate:'2026-09-26'}));
+ const first=deliverReminders(db,new Date('2026-09-26T12:00:00Z'),'sme-a');assert.ok(first.delivered>0);
+ assert.equal(deliverReminders(db,new Date('2026-09-26T12:01:00Z'),'sme-a').delivered,0);
+ const inbox=(await api('/api/notifications',auth(staffCookie))).body.notifications;assert.ok(inbox.some(n=>n.title==='Reminder fixture'));
+ assert.equal((await api(`/api/notifications/${inbox[0].id}/read`,auth(otherCookie,'POST',{}))).response.status,404);
+ assert.equal((await api(`/api/notifications/${inbox[0].id}/read`,auth(staffCookie,'POST',{}))).response.status,200);
+ assert.equal((await api('/api/reminders/settings',auth(staffCookie,'PUT',{enabled:true,upcomingDays:1,repeatDays:1}))).response.status,403);
+});

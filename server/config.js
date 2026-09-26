@@ -2,7 +2,8 @@ import { resolve } from 'node:path';
 
 const supportedNames = new Set([
   'AITRACE_BIND_HOST',
-  'AITRACE_REQUEST_BODY_LIMIT_BYTES'
+  'AITRACE_REQUEST_BODY_LIMIT_BYTES',
+  'AITRACE_REMINDER_INTERVAL_MS'
 ]);
 
 function integer(name, value, fallback, minimum, maximum) {
@@ -50,6 +51,7 @@ export function loadConfig({ env = process.env, args = process.argv.slice(2), ro
   const http = Object.freeze({ requestBodyLimitBytes, allowedHostnames, development: !production });
 
   return Object.freeze({
+    reminderIntervalMs: integer('AITRACE_REMINDER_INTERVAL_MS', env.AITRACE_REMINDER_INTERVAL_MS, 60000, 1000, 86400000),
     mode: production ? 'production' : 'development',
     production,
     bindHost,

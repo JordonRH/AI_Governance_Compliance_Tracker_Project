@@ -1,3 +1,4 @@
+import {registerNotifications} from './notifications.js';
 import {registerPolicies} from './policies.js';
 import {registerAssessments,assessmentSummary} from './assessments.js';
 import { randomUUID } from 'node:crypto';
@@ -74,6 +75,7 @@ export function createApp(db, http) {
 
   registerAssessments(app,db,requirePermission);
   registerPolicies(app,db,requirePermission);
+  registerNotifications(app,db,requirePermission);
   app.get('/api/health', (_req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', mode: 'local-prototype' }); });
   app.get('/api/auth/session', (req, res) => res.json({ principal: req.principal }));
   app.post('/api/auth/login', async (req, res, next) => {

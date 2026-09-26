@@ -1,3 +1,4 @@
+import {deliverReminders} from './notifications.js';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
@@ -15,6 +16,9 @@ const db = openDatabase(config.paths.database);
 const app = createApp(db, config.http);
 const server = createServer(app);
 let vite;
+const deliver=()=>{try{deliverReminders(db)}catch(error){console.error('Reminder delivery failed; will retry on next scheduled run.')}};
+deliver();
+const reminderTimer=setInterval(deliver,config.reminderIntervalMs);reminderTimer.unref();
 if (config.production) {
   app.use(express.static(config.paths.distribution));
   app.get('/{*path}', (_req, res) => res.sendFile(resolve(config.paths.distribution, 'index.html')));
@@ -29,6 +33,7 @@ let closing = false;
 async function shutdown() {
   if (closing) return;
   closing = true;
+  clearInterval(reminderTimer);
   await vite?.close();
   server.close(() => { db.close(); process.exit(0); });
   server.closeAllConnections();

@@ -6,3 +6,4 @@
 
 .table-wrap{position:relative}
 .checklist-options{border:1px solid var(--border);border-radius:8px;padding:16px;grid-column:1/-1}.checklist-options label{display:flex;gap:10px;align-items:flex-start;margin:10px 0;font-size:13px}.checklist-options input{width:18px;min-height:18px;flex-shrink:0}.admin-form details,.panel details{overflow-wrap:anywhere}.field{margin-top:6px}.panel details p{margin:10px 0}
+.notification{padding:20px 0;border-bottom:1px solid var(--border)}.notification p{margin:8px 0}.notification small{display:block;color:var(--muted);margin-bottom:10px}.sidebar{overflow-y:auto}.sidebar nav button{padding-top:9px;padding-bottom:9px}.sidebar-footer{padding-top:20px}
