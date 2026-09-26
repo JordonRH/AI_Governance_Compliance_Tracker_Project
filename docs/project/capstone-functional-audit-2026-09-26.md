@@ -1,6 +1,8 @@
-﻿# Capstone functional audit and improvement backlog
+# Capstone functional audit and improvement backlog
 
-Reviewed: 26 September 2026
+Historical pre-implementation audit: 26 September 2026.
+
+The ordered improvements have since been implemented. See [delivery record](capstone-delivery-2026-09-26.md) and [current traceability](capstone-requirements-traceability.md) for the updated state. Findings below preserve the original audit evidence.
 Baseline: [Original capstone](../source-materials/ai-governance-compliance-tracker-capstone.docx)
 
 ## Verification performed

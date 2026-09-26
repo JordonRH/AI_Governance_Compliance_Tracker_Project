@@ -1,4 +1,10 @@
 import {test,expect} from '@playwright/test';
+
+test.beforeEach(async({request})=>{
+ await request.post('/api/auth/login',{data:{login:'admin@example.test',password:'correct horse battery'}});
+ await request.post('/api/examples',{data:{}});
+ await request.post('/api/auth/logout',{data:{}});
+});
 test('assessment drafts survive reload and produce explainable results',async({page})=>{
  await page.goto('/');await page.getByLabel('Login').fill('admin@example.test');await page.getByLabel('Password').fill('correct horse battery');await page.getByRole('button',{name:'Sign in',exact:true}).click();
  await page.getByRole('navigation').getByRole('button',{name:'Registry',exact:true}).click();await page.getByRole('button',{name:'Load fictional examples'}).click();await expect(page.getByText('Fictional invoice helper')).toBeVisible();

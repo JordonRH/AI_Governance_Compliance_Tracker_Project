@@ -6,7 +6,7 @@ Developed for the **University of Canberra ICT Capstone Project 2026-S2R-04 — 
 
 ## Project status
 
-**Prototype foundation under active development.** React/Vite, Express and SQLite provide a local overview and AI registry. Tested domain foundations cover scoring, evidence intake, actions, reminders and scoped dashboard summaries; authentication and the persisted end-to-end governance workflow remain incomplete.
+**Integrated capstone prototype, ready for review.** Registration/login, role controls, registry/disclosure, persisted demonstration assessments and explainable risk results, assigned actions, policy versions/reviews, in-app reminders, dashboard and PDF/CSV exports are implemented. Sponsor-approved assessment content and human acceptance remain pending. See the [user guide](docs/project/user-guide.md) and [acceptance checklist](docs/project/acceptance-checklist.md).
 
 The proposal's 33 work breakdown structure (WBS) activities are recorded in [GitHub Issues](https://github.com/JordonRH/AI_Governance_Compliance_Tracker_Project/issues). These were imported as draft planning records. Suggested owners, estimates, acceptance criteria and dependencies require team review; they do not establish completed work or actual contributions.
 
@@ -21,7 +21,7 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:5173. Stop with Ctrl+C. The backend creates `data/aitrace.sqlite` automatically. The registry starts empty; use **Load fictional examples** to add demonstration data.
+Open http://127.0.0.1:5173. Stop with Ctrl+C. The backend creates `data/aitrace.sqlite` automatically. A fresh checkout has no default login: follow the [account bootstrap instructions](docs/project/development.md). The registry starts empty; use **Load fictional examples** to add demonstration data.
 
 ```powershell
 npm run build
@@ -49,7 +49,7 @@ Checks cover authentication, organisation isolation, the registry API, SQLite pe
 
 The documented functional baseline includes authentication and role-based access, an AI registry, governance assessments, risk explanations, policy/evidence handling, action tracking, review reminders, dashboards, PDF/CSV reporting and Shadow AI self-reporting.
 
-The capstone baseline defines Administrator, Compliance Officer and Staff User roles. Their permission matrix, approval workflows, assessment questions, scoring thresholds and the meaning of compliance status require traceable decisions. The team will not invent governance rules to fill these gaps.
+The capstone baseline defines Administrator, Compliance Officer and Staff User roles. Their permission matrix, approval workflows, assessment questions, scoring thresholds and the meaning of "compliance status" require traceable decisions. The team will not invent governance rules to fill these gaps.
 
 ## Agreed technology direction
 
@@ -64,9 +64,9 @@ The capstone baseline defines Administrator, Compliance Officer and Staff User r
 | Application structure | A simple modular monolith is preferred |
 | Database | SQLite through the built-in Node.js SQLite module |
 | Authentication and authorisation | Local accounts, scrypt passwords, opaque sessions and server-enforced permissions |
-| File storage and delivery channels | TBD; CSV/PDF export and reminder planning are implemented |
+| File storage and delivery channels | Versioned SQLite policy blobs and scheduled in-app notifications |
 
-Unresolved technologies and governance rules remain open. The registry is a local demonstration, not an authenticated institutional system. Read the [documentation index](docs/README.md), [local development](docs/project/development.md), [architecture](docs/project/architecture.md) and [progress](docs/project/progress.md) before extending it.
+Governance content review remains open. The app is an authenticated local prototype; optional TLS and storage-encryption acceptance are documented in the [security plan](docs/project/security-configuration.md). Read the [documentation index](docs/README.md), [local development](docs/project/development.md), [architecture](docs/project/architecture.md) and [progress](docs/project/progress.md) before extending it.
 
 ## Team and collaboration
 

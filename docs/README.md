@@ -10,6 +10,10 @@ AITrace documentation follows a simple folder cadence so working guidance and or
 - [Capstone requirements traceability](project/capstone-requirements-traceability.md): source requirements mapped to tickets, evidence, gaps and next work.
 - [Proposal issue register](project/proposal-issue-register.md): mapping between proposal WBS activities and GitHub issues.
 
+- [User guide](project/user-guide.md): complete role-based demonstration workflow.
+- [Acceptance checklist](project/acceptance-checklist.md): human review steps and remaining evidence.
+- [Security configuration](project/security-configuration.md): password/TLS settings and storage-encryption plan.
+
 ## Source materials
 
 The `source-materials/` folder preserves the original university and project planning files. File contents are unchanged; filenames use lowercase kebab-case for consistent repository navigation.

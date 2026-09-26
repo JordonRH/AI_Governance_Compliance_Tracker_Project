@@ -1,49 +1,40 @@
-# Capstone requirements traceability
+﻿# Capstone requirements traceability
 
-Source baseline: `docs/source-materials/ai-governance-compliance-tracker-capstone.docx`
-Reviewed: 25 September 2026
+Baseline: `docs/source-materials/ai-governance-compliance-tracker-capstone.docx`
+Reviewed: 26 September 2026 after the ordered audit-improvement batches.
 
-This matrix treats the capstone document as the product requirements baseline. The separate project plan controls delivery tracking where it does not conflict with the capstone. Conflicts remain visible until the sponsor changes the baseline.
+Implemented means demonstrated in the local prototype, not sponsor sign-off or production readiness. Source documents are unchanged. Earlier proposal terminology referring to faculties/education/research does not override the SME capstone baseline.
 
-| Requirement | Tickets | Current evidence | Status | Required next evidence |
-| --- | --- | --- | --- | --- |
-| SME-focused plain-language product | #1, #5, #6, #12, #32 | SME interface, registry, disclosure and guidance | Partial | Validate the complete workflow with representative SME users |
-| Administrator, Compliance Officer and Staff User access | #7, #8, #11 | Organisation accounts, Administrator registration, password resets, role/status controls, revocation audit, scrypt passwords, opaque sessions and API permissions | Partial | Automated recovery, permission review and production TLS |
-| Governance questionnaire mapped to recognised frameworks | #4, #9, #14 | Candidate framework map and lifecycle design | Partial | Approved questions, definitions, persistence, API and UI |
-| AI registry with purpose, data sensitivity and approval status | #7, #12 | Organisation-scoped registry with business area, sensitivity, approval, source and creator | Partial | Approval history and assessment integration |
-| Transparent rules-based risk classification | #9, #15 | Tested versioned scoring engine with synthetic rules | Partial | Approved labels/rules and persisted assessment integration |
-| Policy repository linked to checklist items | #16 | File-policy validation and digest descriptor | Partial | Authorised storage, metadata, retrieval and interface |
-| Compliance action tracking | #17 | Tested aggregate, due dates, owner, statuses and history | Partial | Persistence, permissions, API and interface |
-| Automated reminders | #18 | Authenticated planning API uses persisted open actions and approved timing input | Partial | Scheduler, recipients, delivery adapter and delivery history |
-| Management/audit PDF and CSV reports | #22 | Organisation-scoped authorised CSV and paginated PDF exports | Partial | Approved final fields, PDF visual review and complete assessment/action content |
-| Administrator compliance dashboard | #19, #24 | Authenticated overview plus persisted action-aware scoped dashboard API | Partial | Assessment risk data and refined management interface |
-| Shadow AI staff self-reporting | #23 | Authenticated disclosure creates a Not reviewed registry record | Partial | Compliance triage workflow and explicit conversion history |
-| HTTPS/TLS, secure passwords and RBAC | #11, #28 | Loopback safeguards and security design | Partial | Password hashing, sessions, RBAC tests and deployment TLS guidance |
-| Australian privacy and fictional development data | #1, #16, #28 | Fictional fixtures and explicit no-real-data guidance | Partial | Retention/access decisions and privacy review evidence |
-| Responsive plain-language desktop/tablet UX | #5, #6, #25 | Responsive UI and Playwright coverage | Partial | SME terminology review and complete-workflow accessibility review |
-| Stable assessment and tracking functions | #14-#19, #26, #29 | Pure domain tests and registry integration tests | Partial | Persisted end-to-end workflow and regression suite |
-| Multi-organisation data separation | #7, #11, #19, #28 | Organisation keys, scoped queries and horizontal-access API tests | Partial | Extend isolation to assessments, evidence and delivery records |
-| Documented maintainable handover | #8, #10, #32, #33 | README, architecture, setup and design notes | Partial | Updated user guide and final independent walkthrough |
-| Demo-scale dashboard/report performance | #19, #22, #26 | Repeatable 500-record registry and CSV check under one second | Partial | Sponsor-approved threshold and dashboard/PDF measurements |
-| Sponsor demonstration and feedback | #20, #21, #33 | Not yet recorded | Missing | Fictional-data demo, minutes, decisions and backlog updates |
+| Requirement | Tickets | Current evidence | Remaining acceptance |
+| --- | --- | --- | --- |
+| Registration, authentication and three roles | #7, #8, #11 | Admin account directory/create/reset/role/status; self-password changes; mandatory post-reset rotation; scoped sessions/permissions and audit | Independent review; confirm admin-managed registration meets sponsor expectations |
+| Governance questionnaire | #4, #9, #14 | Versioned definition snapshots, draft persistence/revisions, immutable submission, history and source/topic trace | Sponsor-approved questionnaire and framework interpretation; current content is explicitly synthetic |
+| AI registry | #7, #12 | Persisted purpose/owner/business area/sensitivity/approval; search/filter/pagination, staff-readable details, decision history and fictional examples | SME acceptance; retention/archive rules |
+| Explainable risk classification | #9, #15 | Integrated deterministic scoring, stored outcomes and matched explanations, latest-result summaries | Sponsor-approved rules/thresholds; no legal certification |
+| Policy repository/checklist links | #16 | Scoped validated PDF/text upload, SQLite blobs, version/digest metadata, authorised download, checklist links and review scheduling | Sponsor format/retention policy; malware-scanning decision before real files |
+| Compliance action tracker | #17 | UI/API/persistence, linked assessments, active account owners, dates/status/filter/history and staff assigned-work list | Human acceptance of manager-controlled updates |
+| Automated reminders | #18 | Periodic runner, scoped in-app inbox, configurable timing, action/latest-policy inputs, idempotent delivery, read state and retry/run history | Sponsor notification policy; email is not configured or required for current channel |
+| PDF and CSV reporting | #22 | Registry/assessment/action/policy evidence, formula-safe CSV, wrapped paginated PDF and embedded Latin font; rendered sample QA | Sponsor report acceptance; additional scripts need fonts |
+| Role-based compliance dashboard | #19, #24 | Assessed/unassessed registry totals, demo risk distribution, outstanding/overdue actions, policy reviews and workflow links | Approved risk content and human management/staff usability review |
+| Shadow AI disclosure | #23 | Staff submission, Not reviewed default, retained provenance, pending-review filter and decision history | Sponsor acceptance of triage process |
+| Security | #11, #28 | Scrypt, revoked opaque sessions, live roles, scoped queries, throttling, safe errors, upload limits, optional TLS/Secure cookies | Actual trusted certificate and encrypted-volume/storage verification; independent review |
+| Privacy | #1, #16, #28 | Fictional fixtures, access controls and local-data exclusions | Retention/deletion decisions and privacy review |
+| Responsive plain-language UX | #5, #6, #25 | Shared required fields/errors, desktop/tablet/mobile layout checks and automated accessibility scans in both palettes/modes | Human keyboard/screen-reader/SME UAT |
+| Reliability and tests | #26, #29 | API/domain regression suite plus role/admin/assessment/action/policy/reminder/browser tests | Independent regression/UAT sign-off; automated evidence is not human acceptance |
+| Multi-organisation separation | #7, #11, #19, #28 | Scoped accounts, registry, assessments, actions, policies/files, inbox, settings and reports | Broader multi-tenant deployment remains out of scope |
+| Maintainability and handover | #8, #10, #32, #33 | Current setup, architecture, user guide, security plan and repeatable acceptance checklist | Independent clean-checkout walkthrough and sponsor handover |
+| Demo-scale performance | #19, #22, #26 | 500-record registry/CSV regression threshold and paginated PDF generation tests | Sponsor-agreed thresholds for full representative datasets |
+| Sponsor feedback/demo | #20, #21, #27, #33 | Reviewable integrated local prototype and scripted acceptance walkthrough | Actual sponsor demonstration, feedback and sign-off |
 
-## Scope rules
+## Scope and approval boundaries
 
-- The product audience is Australian SMEs and their nontechnical business and compliance users.
-- The required role labels are Administrator, Compliance Officer and Staff User.
-- Risk, approval and compliance are separate concepts.
-- The prototype supports self-assessment and must not claim certification or legal advice.
-- Shadow AI uses voluntary staff disclosure; automated device or network discovery is outside scope.
-- Development, testing and demonstrations use fictional or appropriately de-identified data.
-- Organisation separation is part of the core architecture, even when demonstrated locally.
-- Questionnaire content, scoring thresholds, policy interpretations and report terminology require traceable approval before production use.
+- Audience: Australian SMEs and nontechnical business/compliance users.
+- Roles: Administrator, Compliance Officer, Staff User.
+- Approval, risk classification and compliance are distinct.
+- Current questionnaire/source links demonstrate traceability; synthetic rules do not originate from NIST or ISO and are not sponsor-approved governance policy.
+- Shadow AI uses voluntary disclosure; no automated device/SaaS monitoring.
+- Development/demonstration data remains fictional or de-identified.
+- No legal certification, live enterprise integration, commercial hosting or post-semester support is claimed.
+- Research paper, student reflections, actual contribution records and human acceptance remain separate deliverables.
 
-## Delivery order
-
-1. Correct product language, user journeys and documentation.
-2. Add organisations, memberships, accounts, structured registry fields and audit history.
-3. Implement login, sessions and deny-by-default permissions.
-4. Persist and connect assessments, risk results, actions, evidence metadata, reminders and dashboards.
-5. Add Shadow AI disclosure plus controlled registry conversion.
-6. Add authorised CSV and PDF reports.
-7. Verify accessibility, security, privacy, tenant isolation, reliability and demo-scale performance.
+See [user guide](user-guide.md), [acceptance checklist](acceptance-checklist.md), [security configuration](security-configuration.md), and [delivery record](capstone-delivery-2026-09-26.md).

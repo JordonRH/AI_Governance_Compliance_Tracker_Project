@@ -43,7 +43,7 @@ export function createApp(db, http) {
   app.disable('x-powered-by');
   app.use((req, res, next) => {
     if (!isAllowedHostHeader(req.headers.host, http.allowedHostnames)) return res.status(403).json({ error: 'Host is not allowed.' });
-    res.set({ 'Cache-Control': 'no-store', 'Content-Security-Policy': `default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'${http.development ? " 'unsafe-inline'" : ''}; connect-src 'self'${http.development ? ' ws://127.0.0.1:* ws://localhost:*' : ''}`,
+    res.set({ 'Cache-Control': 'no-store', 'Content-Security-Policy': `default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'${http.development ? " 'unsafe-inline'" : ''}; connect-src 'self'${http.development ? (http.secure ? ' wss://127.0.0.1:* wss://localhost:*' : ' ws://127.0.0.1:* ws://localhost:*') : ''}`,
       'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY' });
     next();
   });
@@ -155,7 +155,7 @@ export function createApp(db, http) {
   });
   app.get('/api/registry/:id', requirePermission('registry:read'), (req, res) => {
     const row = db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE id=? AND organization_id=?`).get(req.params.id, req.principal.organizationId);
-    row ? res.json(map(row)) : res.status(404).json({ error: 'AI use was not found.' });
+    row ? res.json(assessmentSummary(db,req.principal.organizationId,map(row))) : res.status(404).json({ error: 'AI use was not found.' });
   });
   app.post('/api/registry', requirePermission('registry:create'), (req, res) => {
     const errors = validate(req.body);
@@ -198,9 +198,9 @@ export function createApp(db, http) {
     res.json({added});
   });
   app.get('/api/overview', requirePermission('registry:read'), (req, res) => {
-    const total=db.prepare('SELECT COUNT(*) count FROM ai_uses WHERE organization_id=?').get(req.principal.organizationId).count;
-    const byBusinessArea={};for(const row of db.prepare('SELECT business_area,COUNT(*) count FROM ai_uses WHERE organization_id=? GROUP BY business_area').all(req.principal.organizationId))byBusinessArea[row.business_area]=row.count;
-    res.json({total,unassessed:total,byBusinessArea});
+    const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=?`).all(req.principal.organizationId).map(map).map(r=>assessmentSummary(db,req.principal.organizationId,r));
+    const byBusinessArea={};for(const r of records)byBusinessArea[r.businessArea]=(byBusinessArea[r.businessArea]||0)+1;
+    res.json({total:records.length,unassessed:records.filter(r=>r.assessmentStatus==='Not assessed').length,byBusinessArea});
   });
 
   const actionFromRow = row => ({ id:row.id, ownerAccountId:row.owner_account_id, aiUseId:row.ai_use_id, ...(row.assessment_id?{assessmentId:row.assessment_id}:{}), title:row.title, owner:row.owner, dueDate:row.due_date, status:row.status, version:row.version, createdAt:row.created_at, updatedAt:row.updated_at, completedAt:row.completed_at, history:JSON.parse(row.history_json) });
@@ -210,7 +210,7 @@ export function createApp(db, http) {
     res.json({actions:rows.filter(row=>req.principal.role!=='staff_user'||row.owner_account_id===req.principal.accountId).map(actionFromRow)});
   });
   app.get('/api/action-owners', requirePermission('action:manage'), (req,res)=>{
-    res.json({accounts:db.prepare("SELECT id,display_name displayName FROM accounts WHERE organization_id=? AND status='active' ORDER BY display_name").all(req.principal.organizationId)});
+    res.json({accounts:db.prepare("SELECT id,display_name displayName,role FROM accounts WHERE organization_id=? AND status='active' ORDER BY display_name").all(req.principal.organizationId)});
   });
   app.post('/api/actions', requirePermission('action:manage'), (req,res)=>{
     if(!db.prepare('SELECT 1 FROM ai_uses WHERE id=? AND organization_id=?').get(req.body?.aiUseId,req.principal.organizationId)) return res.status(400).json({error:'A visible AI use is required.'});
@@ -232,10 +232,15 @@ export function createApp(db, http) {
     if(patch.ownerAccountId!==undefined){const owner=db.prepare("SELECT id,display_name FROM accounts WHERE id=? AND organization_id=? AND status='active'").get(patch.ownerAccountId,req.principal.organizationId);if(!owner)return res.status(400).json({error:'Choose an active owner in your organisation.'});ownerId=owner.id;patch.owner=owner.display_name;delete patch.ownerAccountId;}
     const result=updateGovernanceAction(actionFromRow(row),patch,{actorId:req.principal.accountId,timestamp:new Date().toISOString()});
     if(result.status==='invalid') return res.status(400).json({error:'Check the action update.',findings:result.findings});
-    if(result.status==='unchanged'){db.prepare('UPDATE governance_actions SET owner_account_id=? WHERE id=?').run(ownerId,row.id);return res.json({...result.action,ownerAccountId:ownerId});}
-    const action=result.action;
-    db.prepare(`UPDATE governance_actions SET title=?,owner=?,due_date=?,status=?,version=?,updated_at=?,completed_at=?,history_json=? WHERE id=? AND organization_id=?`).run(action.title,action.owner,action.dueDate,action.status,action.version,action.updatedAt,action.completedAt,JSON.stringify(action.history),action.id,req.principal.organizationId);
-    db.prepare('UPDATE governance_actions SET owner_account_id=? WHERE id=?').run(ownerId,action.id);
+    if(result.status==='unchanged'&&ownerId===row.owner_account_id)return res.json(result.action);
+    let action={...result.action};
+    if(ownerId!==row.owner_account_id){
+      const ownershipChange={field:'ownerAccountId',from:row.owner_account_id,to:ownerId};
+      if(result.status==='unchanged'){
+        action.version++;action.updatedAt=new Date().toISOString();action.history=[...action.history,{version:action.version,changedAt:action.updatedAt,changedBy:req.principal.accountId,changes:[ownershipChange]}];
+      }else{action.history=action.history.map((h,i)=>i===action.history.length-1?{...h,changes:[...h.changes,ownershipChange]}:h);}
+    }
+    db.prepare(`UPDATE governance_actions SET title=?,owner=?,due_date=?,status=?,version=?,updated_at=?,completed_at=?,history_json=?,owner_account_id=? WHERE id=? AND organization_id=?`).run(action.title,action.owner,action.dueDate,action.status,action.version,action.updatedAt,action.completedAt,JSON.stringify(action.history),ownerId,action.id,req.principal.organizationId);
     res.json({...action,ownerAccountId:ownerId});
   });
   app.post('/api/reminders/plan', requirePermission('action:manage'), (req,res)=>{
@@ -258,7 +263,7 @@ export function createApp(db, http) {
   function reportDetails(org){
     const assessments=db.prepare("SELECT a.*,u.name ai_use_name,c.display_name author FROM assessments a JOIN ai_uses u ON u.id=a.ai_use_id JOIN accounts c ON c.id=a.created_by WHERE a.organization_id=? AND a.state='Submitted' ORDER BY a.updated_at DESC").all(org).map(a=>{const r=JSON.parse(a.result_json),d=JSON.parse(a.definition_json);return {aiUseName:a.ai_use_name,author:a.author,state:a.state,risk:r.outcome.label,definitionVersion:`${d.id}/${d.version}`,explanations:r.triggeredRules.map(x=>x.explanation).join(' '),updatedAt:a.updated_at}});
     const actions=db.prepare('SELECT a.*,u.name ai_use_name FROM governance_actions a JOIN ai_uses u ON u.id=a.ai_use_id WHERE a.organization_id=? ORDER BY due_date').all(org).map(a=>({...actionFromRow(a),aiUseName:a.ai_use_name}));
-    const policies=db.prepare('SELECT p.*,a.display_name reviewer FROM policies p JOIN accounts a ON a.id=p.reviewer_id WHERE p.organization_id=? ORDER BY title,version DESC').all(org).map(p=>({title:p.title,reviewer:p.reviewer,reviewDue:p.review_due,reviewedAt:p.reviewed_at,filename:p.filename,version:p.version,checklist:JSON.parse(p.checklist_json).join(', '),createdAt:p.created_at}));
+    const policies=db.prepare('SELECT p.title,p.review_due,p.reviewed_at,p.filename,p.version,p.checklist_json,p.created_at,a.display_name reviewer FROM policies p JOIN accounts a ON a.id=p.reviewer_id WHERE p.organization_id=? ORDER BY title,version DESC').all(org).map(p=>({title:p.title,reviewer:p.reviewer,reviewDue:p.review_due,reviewedAt:p.reviewed_at,filename:p.filename,version:p.version,checklist:JSON.parse(p.checklist_json).join(', '),createdAt:p.created_at}));
     return {assessments,actions,policies};
   }
   app.get('/api/reports/compliance.csv', requirePermission('report:export'), async (req,res)=>{

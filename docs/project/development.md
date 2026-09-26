@@ -1,121 +1,70 @@
-# Local development
+﻿# Local development and handover
 
-AITrace currently provides a React interface, an Express API and a SQLite-backed AI registry. Progressive implementation continues from the initial interface and backend checkpoint at Jordon's request; team review remains pending.
+## Setup
 
-## Requirements
+Use Node.js 26.5+ and npm. Install with `npm ci`, then `npm run dev`. On Windows where PowerShell blocks npm.ps1, use `npm.cmd` for these commands. Open http://127.0.0.1:5173. Stop with Ctrl+C. One Node process serves Express and Vite; backend changes restart the watched process.
 
-- Node.js 26.5 or later and npm. The initial build was developed with Node.js 26.5.0 and npm 11.17.0.
-- A modern desktop browser.
-- No separate database service is needed.
-
-The application uses Node's built-in `node:sqlite` module. In this Node release the module is a release candidate; its API should be rechecked before changing the supported Node version. SQLite itself is public-domain software and has no licence fee.
-
-## Start the development instance
-
-From the repository folder:
+A new checkout has no default credentials. Bootstrap the first Administrator using an operator-chosen password:
 
 ```powershell
-cd J:\AITrace
-npm install
-npm run dev
+$env:AITRACE_ACCOUNT_PASSWORD = '<choose a unique password of at least 12 characters>'
+npm.cmd run account:create -- --organization-id demo-sme --organization-name "Fictional SME" --login demo-admin --display-name "Demo Administrator" --role administrator
+Remove-Item Env:AITRACE_ACCOUNT_PASSWORD
+npm.cmd run dev
 ```
 
-Open http://127.0.0.1:5173. The Node process runs the Express API and Vite development middleware together. React changes reload through Vite; Node watches backend imports. Press Ctrl+C in the terminal to stop the instance.
+Do not put a real password in tracked documentation. Additional accounts can be created from **Accounts**. Existing local databases retain their credentials; repo clones do not copy them.
 
-For a repeat installation from the committed lockfile, use `npm ci` in place of `npm install`.
+For a built instance, stop dev, run `npm run build`, then `npm run start`. The production flag selects built assets and a stricter script CSP; it does not mean that pilot/production security has been accepted.
 
-## Build and run the built interface
+## Configuration
 
-```powershell
-npm run build
-npm run start
-```
+The app reads process environment variables. `.env.example` is a reference and is not automatically loaded.
 
-Stop the development instance first because both commands use port 5173 by default. `npm run start` serves the built React files through Express. This is still a local prototype, not a production deployment.
-
-## Verify changes
-
-```powershell
-npm test
-npm run test:e2e:install
-npm run test:e2e
-```
-
-The first command exercises the API with temporary SQLite databases, including persistence after restart, validation, edits, filters and local-origin restrictions. The browser tests exercise the registry flow and responsive layout. Chromium needs downloading only on first use or after a Playwright browser update.
-
-Browser tests launch their own server on port 5174 and use a separate temporary database. They do not modify `data/aitrace.sqlite`. Playwright traces and failure artifacts are written to `test-results/playwright/`; review screenshots are written to `test-results/`. Both are excluded from Git.
-
-## Local data
-
-The application creates `data/aitrace.sqlite` on first start. Records persist after refresh and restart. The database and its journal files are excluded from Git.
-
-The initial registry is empty. Use **Load fictional examples** in the interface to add three demonstration records. Repeating this action neither duplicates those records nor overwrites edits to them.
-
-Optional environment variables:
-
-| Variable | Default | Purpose |
+| Setting | Default | Meaning |
 | --- | --- | --- |
-| `PORT` | `5173` | Local server port |
-| `DATABASE_PATH` | `data/aitrace.sqlite` in the repo | Alternate SQLite file, preferably an absolute path |
+| PORT | 5173 | Loopback port |
+| DATABASE_PATH | data/aitrace.sqlite | SQLite file; use an absolute path for a separate demo |
+| AITRACE_BIND_HOST | 127.0.0.1 | Only loopback is supported |
+| AITRACE_REQUEST_BODY_LIMIT_BYTES | 32768 | Normal JSON request limit |
+| AITRACE_REMINDER_INTERVAL_MS | 60000 | Reminder scheduler interval while server runs |
+| AITRACE_LOGIN_MAX_ATTEMPTS | 10 | Failure/attempt threshold per login and connection address |
+| AITRACE_LOGIN_WINDOW_MS | 900000 | Throttling window |
+| AITRACE_TLS_CERT_PATH / AITRACE_TLS_KEY_PATH | unset | Pair of PEM files enabling HTTPS and Secure cookies |
 
-For example, use a separate file for a review session:
+Policy uploads use a separate 1500 KB encoded-request limit and a 1 MiB decoded-file limit. Supported policy formats are PDF and UTF-8 text. Organisation appearance and reminder lead/repeat days are configured in the app, persisted in SQLite.
+
+## Verification
 
 ```powershell
-$env:DATABASE_PATH = 'J:\AITrace\data\review.sqlite'
-npm run dev
+npm.cmd test
+npm.cmd run test:e2e:install
+npm.cmd run test:e2e
+npm.cmd run build
+npm.cmd audit
 ```
 
-Environment variables apply to that terminal session. Use `Remove-Item Env:DATABASE_PATH` to return to the default. The application does not automatically load `.env` files. `.env.example` documents supported non-secret settings; keep actual local values in ignored `.env` files or the process environment. Unknown `AITRACE_` variables and invalid values stop startup so misspelled security settings cannot be silently ignored.
+Browser tests start an isolated server on port 5174 with a temporary database. API tests use disposable databases and fictional fixtures. Browser traces/screenshots are in ignored `test-results/playwright/`. They do not mutate your normal local records.
+
+## Data, migrations and backup
+
+Schema version 10 stores accounts, sessions, registry records, assessments and immutable submitted results, actions/history, policy versions/blobs, notifications, reminder settings, and account/registry audit events. Migrations run automatically and preserve older records. A database newer than the app is rejected.
+
+Use a separate `DATABASE_PATH` for demonstrations. Stop the app before a file-level backup or use a SQLite-consistent backup mechanism; never assume copying only the database while WAL writes are active is safe. Verify restores against a disposable path. Local databases, files, session tokens, logs and secrets are not committed.
 
 ## Current limitations
 
-The server binds to `127.0.0.1`. Authentication and role-based permissions are not implemented. Anyone able to access the local instance can view and edit its records. Use fictional information only. Origin and host checks reduce cross-site access; they are not a substitute for authentication.
+The complete prototype workflow is implemented with explicitly labelled synthetic assessment questions/rules. Sponsor-approved framework interpretations and score thresholds remain pending. Delivery is in-app, not email, and requires the server to run. Free-text legacy action owners must be assigned to accounts to receive reminders. New policy versions retain prior files; there is no retention/deletion policy yet. Report fonts cover the bundled Latin subset.
 
-Records have a single category, a responsible-person/team text field and a plain-language data description. These are initial UI choices for review, not a final institutional data model. There is no approval workflow, sensitive-data classification catalogue, audit history or deletion function yet.
-
-Every record is shown as **Not assessed**. No governance scores, recommendations or compliance claims are generated. Overview totals are registry counts, not governance results.
+TLS is optional and not enabled on the normal HTTP instance. Database contents are not application-encrypted. Follow the [security configuration and verification plan](security-configuration.md) before claiming encrypted storage or trusted HTTPS. Human SME usability/UAT, independent review and sponsor acceptance remain outstanding.
 
 ## Troubleshooting
 
-- If port 5173 is occupied, stop the existing instance or set `PORT` in the terminal.
-- If the built start command reports missing files, run `npm run build` first.
-- If browser tests report a missing executable, run `npm run test:e2e:install`.
-- If SQLite cannot open the file, check write permission for the database directory.
-- If the interface reports an API error, use its retry action and check the terminal output.
+- Port in use: stop the previous instance or choose another PORT.
+- Browser unavailable: run `npm run test:e2e:install`.
+- Invalid configuration: clear unknown AITRACE variables and check paired TLS paths.
+- Forced password change: use the administrator-supplied reset password as the current password, choose a new password, then sign in again.
+- No reminders: check assigned active accounts, review dates, enabled settings and the Notifications page; **Check reminders now** reruns delivery without duplicates.
+- Missing account after a clone: bootstrap an account in that checkout's database.
 
-## Sources
-
-- [SQLite copyright and public-domain dedication](https://www.sqlite.org/copyright.html)
-- [Node.js SQLite module](https://nodejs.org/api/sqlite.html)
-- [Vite getting started](https://vite.dev/guide/)
-- [Express](https://expressjs.com/)
-
-## Temporary theme and record details
-
-The top-bar **Dark theme** button switches appearance. Light remains the default. Its pressed state indicates whether dark mode is enabled. The browser preference is stored under `aitrace-theme`; if storage is blocked, switching still works for the current page session. This temporary feature was requested by Jordon and is not a sponsor requirement.
-
-Select a record name in the overview or registry to open read-only details. Use **Edit record** to change it. Close or Escape dismisses the details and restores focus to the record button. The existing row Edit action remains available.
-
-On Windows, if PowerShell blocks `npm.ps1`, use `npm.cmd` for the documented commands without changing execution policy. Keep the development watch scope restricted to `--watch-path=./server`.
-
-
-## Create the first local account
-
-The application does not contain a default password. Create an organisation administrator explicitly:
-
-```powershell
-$env:AITRACE_ACCOUNT_PASSWORD = 'choose-a-long-local-password'
-npm.cmd run account:create -- --organization-id demo-sme --organization-name "Fictional Demonstration SME" --login admin@example.test --display-name "Local Administrator" --role administrator
-Remove-Item Env:AITRACE_ACCOUNT_PASSWORD
-```
-
-Use at least 12 characters. Supported roles are `administrator`, `compliance_officer` and `staff_user`. Use fictional identities for development. Existing schema-version-1 data migrates into the `legacy-local` organisation; create its account with `--organization-id legacy-local` to access those records.
-
-
-## Administrator console and appearance
-
-Administrators can open **Accounts** to search all accounts in their organisation, create accounts, reset passwords, change roles, and disable or reactivate access. **Manage** opens controls for the selected account. Passwords require 12 to 200 characters and confirmation on reset; existing passwords cannot be viewed. Password resets and access updates revoke the target account's sessions and record a password-free audit event. Administrators cannot remove their own access. A self-password reset returns the administrator to sign-in. Reset passwords are shared manually; automated recovery and forced password changes remain future work.
-
-**Appearance** saves the organisation-wide SREC blue or Slate style in SQLite. SREC blue is inspired by the sponsor institution's official site, https://srec.ac.in/, and its stylesheet at https://srec.ac.in/themes/frontend/css/style.css (reviewed 26 September 2026): blue `#0065c3`, navy `#00306e`, and pale backgrounds `#F3F7FB`. This is an app adaptation, not an official institutional brand endorsement. Both styles support the existing per-browser light/dark toggle. Saved styles apply when members load their workspace; the sign-in screen defaults to SREC blue on a fresh page.
-
-Schema version 4 adds organisation settings and account-administration audit records. Migrations preserve existing accounts and data.
+See the [user guide](user-guide.md), [architecture](architecture.md), and [acceptance checklist](acceptance-checklist.md).

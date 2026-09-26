@@ -17,7 +17,7 @@ export function registerPolicies(app,db,requirePermission){
   if(!pdf&&!plain)return res.status(400).json({error:'Only PDF files with a PDF signature or UTF-8 text files are supported.'});
   const questions=demoDefinition('demo').questions;
   if(!Array.isArray(b.checklist)||b.checklist.some(id=>!questions.some(q=>q.id===id))||new Set(b.checklist).size!==b.checklist.length)return res.status(400).json({error:'Choose valid checklist links.'});
-  if(!db.prepare("SELECT 1 FROM accounts WHERE id=? AND organization_id=? AND status='active'").get(b.reviewerId,req.principal.organizationId))return res.status(400).json({error:'Choose an active reviewer in your organisation.'});
+  if(!db.prepare("SELECT 1 FROM accounts WHERE id=? AND organization_id=? AND status='active' AND role IN ('administrator','compliance_officer')").get(b.reviewerId,req.principal.organizationId))return res.status(400).json({error:'Choose an active Administrator or Compliance Officer reviewer.'});
   const previous=b.documentId?db.prepare('SELECT version FROM policies WHERE document_id=? AND organization_id=? ORDER BY version DESC LIMIT 1').get(b.documentId,req.principal.organizationId):null;
   if(b.documentId&&!previous)return res.status(404).json({error:'Policy document was not found.'});
   const id=randomUUID(),documentId=b.documentId||id,version=(previous?.version||0)+1;

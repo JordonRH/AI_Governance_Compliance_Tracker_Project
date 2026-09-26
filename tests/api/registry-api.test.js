@@ -186,3 +186,11 @@ test('sign-in throttling rejects repeated failures with a retry interval',async(
  const local=createServer(createApp(db,{...http,loginMaxAttempts:2}));await new Promise(ok=>local.listen(0,'127.0.0.1',ok));
  try{for(let i=0;i<3;i++){const response=await fetch(`http://127.0.0.1:${local.address().port}/api/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:'rate-test',password:'wrong'})});assert.equal(response.status,i<2?401:429);if(i===2)assert.ok(response.headers.get('retry-after'));await response.text();}}finally{await new Promise(ok=>local.close(ok))}
 });
+
+test('reassigning between identically named owners increments version and records account ids',async()=>{
+ const ids=[];for(let i=0;i<2;i++)ids.push(await createAccount(db,{organizationId:'sme-a',organizationName:'Fictional SME A',login:`same-name-${i}`,displayName:'Same name',role:'staff_user',password:'correct horse battery'}));
+ const record=(await api('/api/registry',auth(adminCookie,'POST',valid))).body;
+ const made=(await api('/api/actions',auth(adminCookie,'POST',{aiUseId:record.id,title:'Ownership review',ownerAccountId:ids[0],dueDate:'2026-10-01'}))).body;
+ const updated=await api(`/api/actions/${made.id}`,auth(adminCookie,'PUT',{expectedVersion:1,ownerAccountId:ids[1]}));assert.equal(updated.response.status,200);assert.equal(updated.body.version,2);assert.equal(updated.body.history.at(-1).changes.at(-1).to,ids[1]);
+ assert.equal((await api(`/api/actions/${made.id}`,auth(adminCookie,'PUT',{expectedVersion:1,ownerAccountId:ids[0]}))).response.status,400);
+});

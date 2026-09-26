@@ -146,3 +146,8 @@ Administrators can register organisation accounts for the three capstone roles. 
 Shadow AI self-reporting now creates an unapproved disclosure in the organisation registry without automated discovery. Administrators and Compliance Officers can export organisation-scoped CSV and paginated PDF compliance summaries. These exports state recorded facts and do not claim certification.
 
 The questionnaire, approved scoring definitions, persisted risk results, evidence storage, action persistence and reminder delivery still require integration. The pure modules remain available and tested, but governance content is not invented. See `capstone-requirements-traceability.md` for the ticket mapping and remaining evidence.
+
+
+## 26 September 2026: ordered capstone workflow delivery
+
+The audit backlog was implemented in sequenced commits with GitHub evidence comments. See [delivery record](capstone-delivery-2026-09-26.md), [current traceability](capstone-requirements-traceability.md), [user guide](user-guide.md) and [acceptance checklist](acceptance-checklist.md). Earlier entries are historical checkpoints and do not describe the current feature set. Sponsor content/acceptance, real encrypted-storage/TLS evidence and human UAT remain open.
