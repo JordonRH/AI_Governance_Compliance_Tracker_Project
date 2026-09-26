@@ -12,7 +12,7 @@ export function openDatabase(filename) {
     CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY);
   `);
   const version = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version ?? 0;
-  if (version > 8) { db.close(); throw new Error('Database schema is newer than this application.'); }
+  if (version > 9) { db.close(); throw new Error('Database schema is newer than this application.'); }
   if (version === 0) {
     db.exec(`
       BEGIN;
@@ -187,6 +187,11 @@ export function openDatabase(filename) {
       ) STRICT;
       CREATE TABLE reminder_runs (id INTEGER PRIMARY KEY, started_at TEXT NOT NULL, status TEXT NOT NULL, delivered INTEGER NOT NULL, error TEXT) STRICT;
       INSERT INTO schema_migrations VALUES (8); COMMIT;`);
+  }
+  if (db.prepare('SELECT MAX(version) version FROM schema_migrations').get().version < 9) {
+    db.exec(`BEGIN;
+      CREATE TABLE registry_events (id INTEGER PRIMARY KEY,organization_id TEXT NOT NULL REFERENCES organizations(id),ai_use_id TEXT NOT NULL REFERENCES ai_uses(id),actor_id TEXT NOT NULL REFERENCES accounts(id),changes_json TEXT NOT NULL,created_at TEXT NOT NULL) STRICT;
+      INSERT INTO schema_migrations VALUES (9); COMMIT;`);
   }
   return db;
 }

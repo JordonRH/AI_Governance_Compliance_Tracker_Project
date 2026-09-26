@@ -163,3 +163,11 @@ test('reminders deliver once to recipients and enforce inbox isolation',async()=
  assert.equal((await api(`/api/notifications/${inbox[0].id}/read`,auth(staffCookie,'POST',{}))).response.status,200);
  assert.equal((await api('/api/reminders/settings',auth(staffCookie,'PUT',{enabled:true,upcomingDays:1,repeatDays:1}))).response.status,403);
 });
+
+test('registry decisions retain scoped change history',async()=>{
+ const made=(await api('/api/registry',auth(adminCookie,'POST',valid))).body;
+ assert.equal((await api(`/api/registry/${made.id}`,auth(adminCookie,'PUT',{...valid,approvalStatus:'Approved'}))).response.status,200);
+ const history=(await api(`/api/registry/${made.id}/history`,auth(staffCookie))).body.events;
+ assert.ok(history[0].changes.some(c=>c.field==='approvalStatus'&&c.to==='Approved'));
+ assert.equal((await api(`/api/registry/${made.id}/history`,auth(otherCookie))).response.status,404);
+});

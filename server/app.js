@@ -129,6 +129,10 @@ export function createApp(db, http) {
     if (businessArea) { conditions.push('business_area = ?'); values.push(businessArea); }
     res.json({ records: db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE ${conditions.join(' AND ')} ORDER BY updated_at DESC, id DESC`).all(...values).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record)) });
   });
+  app.get('/api/registry/:id/history',requirePermission('registry:read'),(req,res)=>{
+    if(!db.prepare('SELECT 1 FROM ai_uses WHERE id=? AND organization_id=?').get(req.params.id,req.principal.organizationId))return res.status(404).json({error:'AI use was not found.'});
+    res.json({events:db.prepare('SELECT e.id,e.changes_json,e.created_at,a.display_name actor FROM registry_events e JOIN accounts a ON a.id=e.actor_id WHERE e.ai_use_id=? AND e.organization_id=? ORDER BY e.id DESC').all(req.params.id,req.principal.organizationId).map(e=>({...e,changes:JSON.parse(e.changes_json),changes_json:undefined}))});
+  });
   app.get('/api/registry/:id', requirePermission('registry:read'), (req, res) => {
     const row = db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE id=? AND organization_id=?`).get(req.params.id, req.principal.organizationId);
     row ? res.json(map(row)) : res.status(404).json({ error: 'AI use was not found.' });
@@ -142,13 +146,17 @@ export function createApp(db, http) {
     res.status(201).json(map(db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE id=?`).get(id)));
   });
   app.put('/api/registry/:id', requirePermission('registry:update'), (req, res) => {
-    const row = db.prepare('SELECT created_by_account_id FROM ai_uses WHERE id=? AND organization_id=?').get(req.params.id, req.principal.organizationId);
+    const row = db.prepare('SELECT * FROM ai_uses WHERE id=? AND organization_id=?').get(req.params.id, req.principal.organizationId);
     if (!row) return res.status(404).json({ error: 'AI use was not found.' });
     const errors = validate(req.body);
     if (Object.keys(errors).length) return res.status(400).json({ error: 'Check the highlighted fields.', fields: errors });
     const value = clean(req.body), now = new Date().toISOString();
+    db.exec('BEGIN');try {
     db.prepare(`UPDATE ai_uses SET name=?,purpose=?,owner=?,business_area=?,data_description=?,data_sensitivity=?,approval_status=?,updated_at=? WHERE id=? AND organization_id=?`)
       .run(value.name,value.purpose,value.owner,value.businessArea,value.dataDescription,value.dataSensitivity,value.approvalStatus,now,req.params.id,req.principal.organizationId);
+    const before=map(row),changes=Object.keys(limits).filter(key=>before[key]!==value[key]).map(key=>({field:key,from:before[key],to:value[key]}));
+    if(changes.length)db.prepare('INSERT INTO registry_events (organization_id,ai_use_id,actor_id,changes_json,created_at) VALUES (?,?,?,?,?)').run(req.principal.organizationId,req.params.id,req.principal.accountId,JSON.stringify(changes),now);
+    db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
     res.json(map(db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE id=?`).get(req.params.id)));
   });
   app.post('/api/shadow-reports', requirePermission('shadow:create'), (req, res) => {
