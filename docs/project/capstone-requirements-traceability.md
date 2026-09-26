@@ -8,7 +8,7 @@ This matrix treats the capstone document as the product requirements baseline. T
 | Requirement | Tickets | Current evidence | Status | Required next evidence |
 | --- | --- | --- | --- | --- |
 | SME-focused plain-language product | #1, #5, #6, #12, #32 | SME interface, registry, disclosure and guidance | Partial | Validate the complete workflow with representative SME users |
-| Administrator, Compliance Officer and Staff User access | #7, #8, #11 | Organisation accounts, Administrator registration, scrypt passwords, opaque sessions and API permissions | Partial | Account disabling/recovery, permission review and production TLS |
+| Administrator, Compliance Officer and Staff User access | #7, #8, #11 | Organisation accounts, Administrator registration, password resets, role/status controls, revocation audit, scrypt passwords, opaque sessions and API permissions | Partial | Automated recovery, permission review and production TLS |
 | Governance questionnaire mapped to recognised frameworks | #4, #9, #14 | Candidate framework map and lifecycle design | Partial | Approved questions, definitions, persistence, API and UI |
 | AI registry with purpose, data sensitivity and approval status | #7, #12 | Organisation-scoped registry with business area, sensitivity, approval, source and creator | Partial | Approval history and assessment integration |
 | Transparent rules-based risk classification | #9, #15 | Tested versioned scoring engine with synthetic rules | Partial | Approved labels/rules and persisted assessment integration |

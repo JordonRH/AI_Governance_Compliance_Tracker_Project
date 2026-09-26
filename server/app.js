@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import express from 'express';
-import { createAccount, expiredSessionCookie, hasPermission, login, resolveRequestPrincipal, revokeRequestSession, sessionCookie } from './auth.js';
+import { manageAccount, createAccount, expiredSessionCookie, hasPermission, login, resolveRequestPrincipal, revokeRequestSession, sessionCookie } from './auth.js';
 import { isAllowedHostHeader } from './config.js';
 import { approvalStatuses, dataSensitivities } from './registry-model.js';
 import { createComplianceCsv, createCompliancePdf } from './reporting.js';
@@ -95,6 +95,24 @@ export function createApp(db, http) {
       const row=db.prepare('SELECT id,login,display_name,role,status,created_at,updated_at FROM accounts WHERE id=?').get(id);
       res.status(201).json({id:row.id,login:row.login,displayName:row.display_name,role:row.role,status:row.status,createdAt:row.created_at,updatedAt:row.updated_at});
     }catch(error){if(String(error.message).includes('UNIQUE constraint'))return res.status(409).json({error:'An account with that login already exists.'});if(error instanceof Error)return res.status(400).json({error:error.message});next(error);}
+  });
+  app.get('/api/settings', requirePermission('registry:read'), (req,res)=>{
+    const row=db.prepare('SELECT appearance FROM organization_settings WHERE organization_id=?').get(req.principal.organizationId);
+    res.json({appearance:row?.appearance || 'srec'});
+  });
+  app.put('/api/settings', requirePermission('account:manage'), (req,res)=>{
+    if (!['srec','slate'].includes(req.body?.appearance)) return res.status(400).json({error:'Choose a valid appearance.'});
+    db.prepare('INSERT INTO organization_settings (organization_id,appearance,updated_at) VALUES (?,?,?) ON CONFLICT(organization_id) DO UPDATE SET appearance=excluded.appearance,updated_at=excluded.updated_at')
+      .run(req.principal.organizationId,req.body.appearance,new Date().toISOString());
+    res.json({appearance:req.body.appearance});
+  });
+  app.post('/api/accounts/:id/password', requirePermission('account:manage'), async(req,res,next)=>{
+    try { await manageAccount(db,req.principal,req.params.id,{kind:'password',password:req.body?.password}); res.json({status:'password-reset'}); }
+    catch(error){ if(error.status) return res.status(error.status).json({error:error.message}); next(error); }
+  });
+  app.patch('/api/accounts/:id', requirePermission('account:manage'), async(req,res,next)=>{
+    try { await manageAccount(db,req.principal,req.params.id,{kind:'access',role:req.body?.role,status:req.body?.status}); res.json({status:'updated'}); }
+    catch(error){ if(error.status) return res.status(error.status).json({error:error.message}); next(error); }
   });
   app.get('/api/registry', requirePermission('registry:read'), (req, res) => {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';

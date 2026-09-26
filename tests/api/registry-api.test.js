@@ -56,3 +56,49 @@ test('Administrator can register an organisation account without exposing passwo
   assert.equal((await api('/api/accounts',auth(staffCookie,'POST',{...input,login:'blocked@example.test'}))).response.status,403);
   const signedIn=await api('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:input.login,password:input.password})});assert.equal(signedIn.response.status,200);
 });
+test('appearance is persisted, organisation-scoped, and administrator-only',async()=>{
+  assert.equal((await api('/api/settings')).response.status,401);
+  assert.equal((await api('/api/settings',auth(staffCookie,'PUT',{appearance:'slate'}))).response.status,403);
+  assert.equal((await api('/api/settings',auth(adminCookie,'PUT',{appearance:'invalid'}))).response.status,400);
+  assert.equal((await api('/api/settings',auth(adminCookie,'PUT',{appearance:'slate'}))).response.status,200);
+  assert.equal((await api('/api/settings',auth(staffCookie))).body.appearance,'slate');
+  assert.equal((await api('/api/settings',auth(otherCookie))).body.appearance,'srec');
+  const reopened=openDatabase(filename);
+  assert.equal(reopened.prepare("SELECT appearance FROM organization_settings WHERE organization_id='sme-a'").get().appearance,'slate');reopened.close();
+});
+
+test('password resets enforce scope and policy and invalidate old credentials and sessions',async()=>{
+  const id=await createAccount(db,{organizationId:'sme-a',organizationName:'Fictional SME A',login:'reset@example.test',displayName:'Reset target',role:'staff_user',password:'correct horse battery'});
+  const cookie=await signIn('reset@example.test'), path=`/api/accounts/${id}/password`;
+  assert.equal((await api(path,auth(staffCookie,'POST',{password:'a new strong password'}))).response.status,403);
+  assert.equal((await api(path,auth(otherCookie,'POST',{password:'a new strong password'}))).response.status,404);
+  assert.equal((await api(path,auth(adminCookie,'POST',{password:'short'}))).response.status,400);
+  assert.equal((await api('/api/registry',auth(cookie))).response.status,200);
+  assert.equal((await api(path,auth(adminCookie,'POST',{password:'a new strong password'}))).response.status,200);
+  assert.equal((await api('/api/registry',auth(cookie))).response.status,401);
+  for(const [password,status] of [['correct horse battery',401],['a new strong password',200]]){
+    assert.equal((await api('/api/auth/login',auth('', 'POST',{login:'reset@example.test',password}))).response.status,status);
+  }
+  const audit=db.prepare('SELECT action FROM account_audit WHERE account_id=?').all(id);assert.deepEqual(audit.map(x=>x.action),['password-reset']);
+  const directory=await api('/api/accounts',auth(adminCookie));
+  assert.equal(JSON.stringify(directory.body).includes('password'),false);
+  assert.equal((await api('/api/accounts',auth(otherCookie))).body.accounts.some(x=>x.id===id),false);
+});
+
+test('administrators can disable, reactivate, and change roles without self-lockout',async()=>{
+  const id=await createAccount(db,{organizationId:'sme-a',organizationName:'Fictional SME A',login:'access@example.test',displayName:'Access target',role:'staff_user',password:'correct horse battery'});
+  const cookie=await signIn('access@example.test'), path=`/api/accounts/${id}`;
+  assert.equal((await api(path,auth(staffCookie,'PATCH',{role:'administrator',status:'active'}))).response.status,403);
+  assert.equal((await api(path,auth(otherCookie,'PATCH',{role:'administrator',status:'active'}))).response.status,404);
+  assert.equal((await api(path,auth(adminCookie,'PATCH',{role:'invalid',status:'active'}))).response.status,400);
+  assert.equal((await api(path,auth(adminCookie,'PATCH',{role:'staff_user',status:'disabled'}))).response.status,200);
+  assert.equal((await api('/api/registry',auth(cookie))).response.status,401);
+  assert.equal((await api('/api/auth/login',auth('','POST',{login:'access@example.test',password:'correct horse battery'}))).response.status,401);
+  assert.equal((await api(path,auth(adminCookie,'PATCH',{role:'compliance_officer',status:'active'}))).response.status,200);
+  const newCookie=await signIn('access@example.test');
+  assert.equal((await api('/api/auth/session',auth(newCookie))).body.principal.role,'compliance_officer');
+  const self=db.prepare("SELECT id FROM accounts WHERE login='admin@example.test'").get().id;
+  assert.equal((await api(`/api/accounts/${self}`,auth(adminCookie,'PATCH',{role:'staff_user',status:'active'}))).response.status,400);
+  assert.equal((await api(`/api/accounts/${self}`,auth(adminCookie,'PATCH',{role:'administrator',status:'disabled'}))).response.status,400);
+  assert.equal((await api('/api/accounts',auth(adminCookie))).response.status,200);
+});

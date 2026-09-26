@@ -104,3 +104,42 @@ export function expiredSessionCookie(secure = false) {
   return `${cookieName}=; Path=/; HttpOnly; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secure ? '; Secure' : ''}`;
 }
 export { roles as accountRoles, roleLabels };
+
+// All account mutations are scoped to the current administrator's organisation.
+export async function manageAccount(db, principal, accountId, change) {
+  const fail = (message, status=400) => { throw Object.assign(new Error(message), {status}); };
+  const check = () => {
+    const actor=db.prepare('SELECT role,status,organization_id FROM accounts WHERE id=?').get(principal.accountId);
+    if (!actor || actor.status!=='active' || actor.role!=='administrator' || actor.organization_id!==principal.organizationId) fail('Administrator access is required.',403);
+    const row=db.prepare('SELECT id,role,status FROM accounts WHERE id=? AND organization_id=?').get(accountId,principal.organizationId);
+    if (!row) fail('Account was not found.',404);
+    return row;
+  };
+  check();
+  let salt, hash;
+  if (change.kind==='password') {
+    if (typeof change.password!=='string' || change.password.length<12 || change.password.length>200) fail('Password must contain 12 to 200 characters.');
+    salt=randomBytes(16); hash=await derive(change.password,salt);
+  } else if (change.kind==='access') {
+    if (!roles.includes(change.role) || !['active','disabled'].includes(change.status)) fail('Choose a valid role and account status.');
+  } else fail('Unknown account change.');
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const row=check(), now=new Date().toISOString();
+    if (change.kind==='password') {
+      db.prepare('UPDATE accounts SET password_salt=?,password_hash=?,password_cost=?,password_block_size=?,password_parallelization=?,updated_at=? WHERE id=? AND organization_id=?')
+        .run(salt.toString('hex'),hash.toString('hex'),parameters.cost,parameters.blockSize,parameters.parallelization,now,accountId,principal.organizationId);
+    } else {
+      if (accountId===principal.accountId && (change.role!=='administrator' || change.status!=='active')) fail('You cannot remove your own administrator access.');
+      if (row.role==='administrator' && row.status==='active' && (change.role!=='administrator' || change.status!=='active')) {
+        const count=db.prepare("SELECT COUNT(*) n FROM accounts WHERE organization_id=? AND role='administrator' AND status='active'").get(principal.organizationId).n;
+        if (count<=1) fail('Keep at least one active administrator.');
+      }
+      db.prepare('UPDATE accounts SET role=?,status=?,updated_at=? WHERE id=? AND organization_id=?').run(change.role,change.status,now,accountId,principal.organizationId);
+    }
+    db.prepare('UPDATE sessions SET revoked_at=? WHERE account_id=? AND revoked_at IS NULL').run(now,accountId);
+    db.prepare('INSERT INTO account_audit (organization_id,actor_id,account_id,action,created_at) VALUES (?,?,?,?,?)')
+      .run(principal.organizationId,principal.accountId,accountId,change.kind==='password'?'password-reset':`access:${change.role}:${change.status}`,now);
+    db.exec('COMMIT');
+  } catch(error) { db.exec('ROLLBACK'); throw error; }
+}

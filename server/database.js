@@ -12,7 +12,7 @@ export function openDatabase(filename) {
     CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY);
   `);
   const version = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version ?? 0;
-  if (version > 3) { db.close(); throw new Error('Database schema is newer than this application.'); }
+  if (version > 4) { db.close(); throw new Error('Database schema is newer than this application.'); }
   if (version === 0) {
     db.exec(`
       BEGIN;
@@ -128,6 +128,24 @@ export function openDatabase(filename) {
       INSERT INTO schema_migrations(version) VALUES (3);
       COMMIT;
     `);
+  }
+  if (db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version < 4) {
+    db.exec(`BEGIN;
+      CREATE TABLE organization_settings (
+        organization_id TEXT PRIMARY KEY REFERENCES organizations(id),
+        appearance TEXT NOT NULL CHECK(appearance IN ('srec','slate')),
+        updated_at TEXT NOT NULL
+      ) STRICT;
+      CREATE TABLE account_audit (
+        id INTEGER PRIMARY KEY,
+        organization_id TEXT NOT NULL REFERENCES organizations(id),
+        actor_id TEXT NOT NULL REFERENCES accounts(id),
+        account_id TEXT NOT NULL REFERENCES accounts(id),
+        action TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      ) STRICT;
+      INSERT INTO schema_migrations(version) VALUES (4);
+      COMMIT;`);
   }
   return db;
 }

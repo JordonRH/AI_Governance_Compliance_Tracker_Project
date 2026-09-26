@@ -110,3 +110,12 @@ Remove-Item Env:AITRACE_ACCOUNT_PASSWORD
 ```
 
 Use at least 12 characters. Supported roles are `administrator`, `compliance_officer` and `staff_user`. Use fictional identities for development. Existing schema-version-1 data migrates into the `legacy-local` organisation; create its account with `--organization-id legacy-local` to access those records.
+
+
+## Administrator console and appearance
+
+Administrators can open **Accounts** to search all accounts in their organisation, create accounts, reset passwords, change roles, and disable or reactivate access. **Manage** opens controls for the selected account. Passwords require 12 to 200 characters and confirmation on reset; existing passwords cannot be viewed. Password resets and access updates revoke the target account's sessions and record a password-free audit event. Administrators cannot remove their own access. A self-password reset returns the administrator to sign-in. Reset passwords are shared manually; automated recovery and forced password changes remain future work.
+
+**Appearance** saves the organisation-wide SREC blue or Slate style in SQLite. SREC blue is inspired by the sponsor institution's official site, https://srec.ac.in/, and its stylesheet at https://srec.ac.in/themes/frontend/css/style.css (reviewed 26 September 2026): blue `#0065c3`, navy `#00306e`, and pale backgrounds `#F3F7FB`. This is an app adaptation, not an official institutional brand endorsement. Both styles support the existing per-browser light/dark toggle. Saved styles apply when members load their workspace; the sign-in screen defaults to SREC blue on a fresh page.
+
+Schema version 4 adds organisation settings and account-administration audit records. Migrations preserve existing accounts and data.
