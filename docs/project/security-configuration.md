@@ -1,4 +1,4 @@
-﻿# Prototype security configuration and verification
+# Prototype security configuration and verification
 
 ## Account access
 
@@ -8,7 +8,7 @@ Failed login attempts are throttled per connection address and login identifier 
 
 ## TLS
 
-Set both `AITRACE_TLS_CERT_PATH` and `AITRACE_TLS_KEY_PATH` to readable PEM files outside the repository, then start the server. With TLS configured, the app uses HTTPS, accepts same-origin HTTPS requests and sets Secure session cookies. Missing/invalid file contents cause startup to fail. Without both settings, it remains a loopback-only HTTP development instance. Neither a trusted certificate nor a production deployment has been provisioned by this work.
+Set both `AITRACE_TLS_CERT_PATH` and `AITRACE_TLS_KEY_PATH` to readable PEM files outside the repository, then start the server. With TLS configured, the app uses HTTPS, accepts same-origin HTTPS requests and sets Secure session cookies. Missing/invalid file contents cause startup to fail. Without both settings, it remains a loopback-only HTTP development instance. A temporary self-signed certificate can now be staged by an Administrator. Neither a trusted certificate nor a production deployment has been provisioned by this work.
 
 Verification: configuration tests require both paths and check HTTPS mode; authenticate over the configured HTTPS origin, inspect the session cookie for Secure/HttpOnly/SameSite=Strict, and verify that another origin is rejected. Certificate trust must be verified on each demonstration device. Never commit a private key. Production scripts keep a strict script CSP; the development server explicitly permits its required Vite inline preamble.
 
@@ -25,3 +25,15 @@ Uploads allow PDF signatures or UTF-8 text only, with 1 MiB decoded limit, bound
 ## Remaining acceptance evidence
 
 Operator-verified encrypted storage and certificate trust, representative user acceptance, retention/deletion policy, and independent security review remain explicit human/operational tasks. No legal compliance certification is asserted. No real client data is needed to complete prototype testing.
+
+## Administrator certificate staging
+
+Administrators can use **Certificates** to generate a 30-day self-signed development pair or upload a matching PEM certificate chain/key. Local certificates must cover both `localhost` and `127.0.0.1`. Invalid, expired, not-yet-valid or mismatched replacements are rejected before changing the staged file. The page shows expiry and whether the staged fingerprint matches the running server. A staged certificate can be replaced after expiry.
+
+Each organisation has a separate bundle under `AITRACE_CERTIFICATES_DIR` (default: ignored `data/certificates/`). The API returns metadata and the activation path, never the private key. Writes use temporary files and an atomic rename, with owner-only Unix modes. On Windows, restrict the directory ACL to the server account/authorised operators; Unix modes do not establish a Windows ACL. Treat the bundle as a secret: no Git, shared attachments or ordinary backups. The application does not encrypt private keys at rest.
+
+To activate, set `AITRACE_TLS_BUNDLE_PATH` to the displayed bundle path, clear `AITRACE_TLS_CERT_PATH` and `AITRACE_TLS_KEY_PATH`, and restart the server. Configuration is read from the process environment; `.env` is an example/local storage convention, not automatically loaded by the current scripts. A certificate replacement takes effect on restart. The operator chooses the active organisation bundle because TLS is server-wide; an organisation administrator cannot silently change transport for other organisations.
+
+Self-signed development certificates encrypt the connection but are not publicly trusted. No certificate is installed in an operating-system trust store automatically. Use HTTPS before sending a real replacement private key. Replace the temporary pair with an appropriately issued local certificate and verify trust separately. The server remains restricted to loopback; external deployment/hostnames need their own deployment review.
+
+Certificate generation uses [selfsigned](https://github.com/jfromaniello/selfsigned) with SHA-256 and a new RSA key on each generation. Automated tests perform an HTTPS handshake trusting only the generated test certificate, without disabling TLS validation globally.

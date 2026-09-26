@@ -1,3 +1,4 @@
+import {createCertificateStore,readTlsBundle,validateCertificatePair} from './certificates.js';
 import {deliverReminders} from './notifications.js';
 import { createServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
@@ -15,8 +16,10 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const config = loadConfig({ rootDir: root });
 if (config.production && !existsSync(resolve(config.paths.distribution, 'index.html'))) throw new Error('Run npm run build before npm run start.');
 const db = openDatabase(config.paths.database);
-const app = createApp(db, config.http);
-const server = config.tls ? createHttpsServer({cert:readFileSync(config.tls.cert),key:readFileSync(config.tls.key)},app) : createServer(app);
+const tlsPair=config.tls?(config.tls.bundle?readTlsBundle(config.tls.bundle):{cert:readFileSync(config.tls.cert,'utf8'),key:readFileSync(config.tls.key,'utf8')}):null;
+const certificates=createCertificateStore(config.certificatesDirectory,{secure:config.http.secure,activeFingerprint:tlsPair?validateCertificatePair(tlsPair).fingerprint:null});
+const app = createApp(db, config.http,{certificates});
+const server = config.tls ? createHttpsServer(tlsPair,app) : createServer(app);
 let vite;
 const deliver=()=>{try{deliverReminders(db)}catch(error){console.error('Reminder delivery failed; will retry on next scheduled run.')}};
 deliver();

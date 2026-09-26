@@ -151,3 +151,9 @@ The questionnaire, approved scoring definitions, persisted risk results, evidenc
 ## 26 September 2026: ordered capstone workflow delivery
 
 The audit backlog was implemented in sequenced commits with GitHub evidence comments. See [delivery record](capstone-delivery-2026-09-26.md), [current traceability](capstone-requirements-traceability.md), [user guide](user-guide.md) and [acceptance checklist](acceptance-checklist.md). Earlier entries are historical checkpoints and do not describe the current feature set. Sponsor content/acceptance, real encrypted-storage/TLS evidence and human UAT remain open.
+
+## 27 September 2026 — Administrator certificates
+
+Added organisation-scoped certificate staging, temporary 30-day self-signed generation, matching PEM replacement validation, expiry/fingerprint metadata and explicit restart-based server activation. Secret bundles remain outside Git. The normal local administrator now has a generated staged pair; its Windows directory ACL is restricted to the current account and SYSTEM. HTTP remains active until configuration/restart; no trust-store changes were made.
+
+Verification: 68 application tests and 14 browser tests passed, production build passed, npm audit reported zero vulnerabilities. A test HTTPS connection verified the generated certificate using an explicit test CA. The new page is included in automated accessibility checks across both palettes and light/dark modes. A browser test's required-field label locator was corrected before the final passing run.

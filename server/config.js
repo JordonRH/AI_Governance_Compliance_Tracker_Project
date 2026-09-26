@@ -4,7 +4,7 @@ const supportedNames = new Set([
   'AITRACE_BIND_HOST',
   'AITRACE_REQUEST_BODY_LIMIT_BYTES',
   'AITRACE_REMINDER_INTERVAL_MS',
-  'AITRACE_TLS_CERT_PATH','AITRACE_TLS_KEY_PATH','AITRACE_LOGIN_MAX_ATTEMPTS','AITRACE_LOGIN_WINDOW_MS'
+  'AITRACE_CERTIFICATES_DIR','AITRACE_TLS_BUNDLE_PATH','AITRACE_TLS_CERT_PATH','AITRACE_TLS_KEY_PATH','AITRACE_LOGIN_MAX_ATTEMPTS','AITRACE_LOGIN_WINDOW_MS'
 ]);
 
 function integer(name, value, fallback, minimum, maximum) {
@@ -50,7 +50,8 @@ export function loadConfig({ env = process.env, args = process.argv.slice(2), ro
     distribution: resolve(rootDir, 'dist')
   });
   if(Boolean(env.AITRACE_TLS_CERT_PATH)!==Boolean(env.AITRACE_TLS_KEY_PATH))throw new Error('Configure both TLS certificate and key paths.');
-  const tls=env.AITRACE_TLS_CERT_PATH?Object.freeze({cert:resolve(rootDir,env.AITRACE_TLS_CERT_PATH),key:resolve(rootDir,env.AITRACE_TLS_KEY_PATH)}):null;
+  if(env.AITRACE_TLS_BUNDLE_PATH&&env.AITRACE_TLS_CERT_PATH)throw new Error('Choose a TLS bundle or separate PEM paths, not both.');
+  const tls=env.AITRACE_TLS_BUNDLE_PATH?Object.freeze({bundle:resolve(rootDir,env.AITRACE_TLS_BUNDLE_PATH)}):env.AITRACE_TLS_CERT_PATH?Object.freeze({cert:resolve(rootDir,env.AITRACE_TLS_CERT_PATH),key:resolve(rootDir,env.AITRACE_TLS_KEY_PATH)}):null;
   const http = Object.freeze({ requestBodyLimitBytes, allowedHostnames, development: !production, secure: Boolean(tls), loginMaxAttempts:integer('AITRACE_LOGIN_MAX_ATTEMPTS',env.AITRACE_LOGIN_MAX_ATTEMPTS,10,1,100), loginWindowMs:integer('AITRACE_LOGIN_WINDOW_MS',env.AITRACE_LOGIN_WINDOW_MS,900000,1000,86400000) });
 
   return Object.freeze({
@@ -58,6 +59,7 @@ export function loadConfig({ env = process.env, args = process.argv.slice(2), ro
     mode: production ? 'production' : 'development',
     production,
     tls,
+    certificatesDirectory:resolve(rootDir,env.AITRACE_CERTIFICATES_DIR||'data/certificates'),
     bindHost,
     port,
     publicUrl: `${tls?'https':'http'}://${bindHost}:${port}`,

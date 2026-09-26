@@ -1,3 +1,4 @@
+import {registerCertificates} from './certificates.js';
 import {registerNotifications} from './notifications.js';
 import {registerPolicies} from './policies.js';
 import {registerAssessments,assessmentSummary} from './assessments.js';
@@ -37,7 +38,7 @@ function validate(body, { shadow = false } = {}) {
   return errors;
 }
 const clean = (body, defaults = {}) => Object.fromEntries(Object.keys(limits).map(key => [key, typeof body[key] === 'string' ? body[key].trim() : defaults[key]]));
-export function createApp(db, http) {
+export function createApp(db, http, {certificates} = {}) {
   if (!db || !http?.allowedHostnames || !http?.requestBodyLimitBytes) throw new Error('Database and HTTP configuration are required.');
   const app = express();
   app.disable('x-powered-by');
@@ -86,6 +87,7 @@ export function createApp(db, http) {
     next();
   };
 
+  registerCertificates(app,requirePermission,certificates);
   registerAssessments(app,db,requirePermission);
   registerPolicies(app,db,requirePermission);
   registerNotifications(app,db,requirePermission);

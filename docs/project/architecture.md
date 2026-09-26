@@ -1,4 +1,4 @@
-﻿# Application architecture
+# Application architecture
 
 Reviewed 26 September 2026. The capstone baseline is an Australian SME prototype. Sponsor content approval and human acceptance are separate from implementation.
 
@@ -53,3 +53,7 @@ Writes use JSON, bound SQL parameters and server-side scope checks. Binary polic
 ## Remaining architectural work
 
 Actual encrypted-volume/database evidence, retention/deletion policy, shared persistent throttling for multi-process hosting, additional font/script support and production deployment are not claimed. External email delivery and public account recovery are not configured. See the security plan and acceptance checklist.
+
+## Certificate administration
+
+`server/certificates.js` validates certificate/key pairs, generates temporary local certificates and atomically stages organisation-specific private bundles. `src/certificates.jsx` exposes metadata, generation and replacement to Administrators through `/api/certificates`, `/generate` and `/replace`. The operator chooses an active bundle using process configuration and restarts the shared server. Private key material never appears in API responses. See the security configuration document for Windows ACL and trust requirements.

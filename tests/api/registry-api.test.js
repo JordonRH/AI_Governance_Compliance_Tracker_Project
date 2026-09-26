@@ -1,3 +1,4 @@
+import {createCertificateStore,readTlsBundle} from '../../server/certificates.js';
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { createServer, request as httpRequest } from 'node:http';
@@ -15,7 +16,7 @@ before(async()=>{db=openDatabase(filename);
  await createAccount(db,{organizationId:'sme-a',organizationName:'Fictional SME A',login:'admin@example.test',displayName:'Fictional Admin',role:'administrator',password:'correct horse battery'});
  await createAccount(db,{organizationId:'sme-a',organizationName:'Fictional SME A',login:'staff@example.test',displayName:'Fictional Staff',role:'staff_user',password:'correct horse battery'});
  await createAccount(db,{organizationId:'sme-b',organizationName:'Fictional SME B',login:'other@example.test',displayName:'Other Admin',role:'administrator',password:'correct horse battery'});
- server=createServer(createApp(db,http));await new Promise(ok=>server.listen(0,'127.0.0.1',ok));base=`http://127.0.0.1:${server.address().port}`;
+ server=createServer(createApp(db,http,{certificates:createCertificateStore(join(directory,'certificates'))}));await new Promise(ok=>server.listen(0,'127.0.0.1',ok));base=`http://127.0.0.1:${server.address().port}`;
  adminCookie=await signIn('admin@example.test');staffCookie=await signIn('staff@example.test');otherCookie=await signIn('other@example.test');
 });
 after(async()=>{await new Promise(ok=>server.close(ok));db.close();rmSync(directory,{recursive:true,force:true});});
@@ -193,4 +194,21 @@ test('reassigning between identically named owners increments version and record
  const made=(await api('/api/actions',auth(adminCookie,'POST',{aiUseId:record.id,title:'Ownership review',ownerAccountId:ids[0],dueDate:'2026-10-01'}))).body;
  const updated=await api(`/api/actions/${made.id}`,auth(adminCookie,'PUT',{expectedVersion:1,ownerAccountId:ids[1]}));assert.equal(updated.response.status,200);assert.equal(updated.body.version,2);assert.equal(updated.body.history.at(-1).changes.at(-1).to,ids[1]);
  assert.equal((await api(`/api/actions/${made.id}`,auth(adminCookie,'PUT',{expectedVersion:1,ownerAccountId:ids[0]}))).response.status,400);
+});
+
+
+test('certificate administration is scoped, validates replacements and never returns private keys',async()=>{
+ assert.equal((await api('/api/certificates')).response.status,401);
+ assert.equal((await api('/api/certificates',auth(staffCookie))).response.status,403);
+ assert.equal((await api('/api/certificates/generate',auth(staffCookie,'POST',{}))).response.status,403);
+ const cookie=await signIn('admin@example.test');
+ const made=await api('/api/certificates/generate',auth(cookie,'POST',{}));
+ assert.equal(made.response.status,200);assert.equal(made.body.staged.kind,'temporary');assert.equal(made.body.staged.selfSigned,true);
+ assert.equal(JSON.stringify(made.body).includes('PRIVATE KEY'),false);
+ assert.equal((await api('/api/certificates',auth(otherCookie))).body.staged,null);
+ const pair=readTlsBundle(made.body.bundlePath);
+ const rejected=await api('/api/certificates/replace',auth(cookie,'POST',{...pair,key:'invalid'}));
+ assert.equal(rejected.response.status,400);
+ assert.equal((await api('/api/certificates',auth(cookie))).body.staged.fingerprint,made.body.staged.fingerprint);
+ const updated=await api('/api/certificates/replace',auth(cookie,'POST',pair));assert.equal(updated.response.status,200);assert.equal(updated.body.staged.kind,'uploaded');
 });

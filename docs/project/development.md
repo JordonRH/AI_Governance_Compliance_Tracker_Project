@@ -1,4 +1,4 @@
-﻿# Local development and handover
+# Local development and handover
 
 ## Setup
 
@@ -31,6 +31,8 @@ The app reads process environment variables. `.env.example` is a reference and i
 | AITRACE_LOGIN_MAX_ATTEMPTS | 10 | Failure/attempt threshold per login and connection address |
 | AITRACE_LOGIN_WINDOW_MS | 900000 | Throttling window |
 | AITRACE_TLS_CERT_PATH / AITRACE_TLS_KEY_PATH | unset | Pair of PEM files enabling HTTPS and Secure cookies |
+| AITRACE_CERTIFICATES_DIR | data/certificates | Private administrator certificate staging directory |
+| AITRACE_TLS_BUNDLE_PATH | unset | Staged JSON pair to activate on restart; mutually exclusive with PEM paths |
 
 Policy uploads use a separate 1500 KB encoded-request limit and a 1 MiB decoded-file limit. Supported policy formats are PDF and UTF-8 text. Organisation appearance and reminder lead/repeat days are configured in the app, persisted in SQLite.
 

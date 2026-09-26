@@ -20,7 +20,8 @@
     "express": "^5.1.0",
     "pdfkit": "^0.20.2",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "selfsigned": "^5.5.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

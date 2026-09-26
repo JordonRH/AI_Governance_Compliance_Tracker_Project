@@ -31,3 +31,5 @@ Open **Disclose AI use** and describe the tool and data it handles. It enters th
 ## Practical limits
 
 Notifications are in-app and require the server to run. Legacy free-text action owners need account assignment before delivery. Uploads are restricted attachments, not malware-scanned documents. PDF text uses a Latin font subset. Email notifications, public password recovery, sponsor-approved risk content and human acceptance remain outside the completed implementation evidence.
+
+Administrators also have a **Certificates** page to generate temporary local certificates, inspect expiry, and stage replacement PEM files. Follow [security configuration](security-configuration.md) to activate HTTPS and protect the private bundle. Generation does not restart the server or establish browser trust.
