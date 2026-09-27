@@ -84,7 +84,7 @@ para('Verify the current password, choose a new one and sign out existing sessio
 x=M+cw+22;c.setFillColor(black);c.setFont('ArialBold',13);c.drawString(x,top,'Mobile and role views');shot('25-mobile-overview',x,top-15,122,252)
 para('The screenshot pack includes mobile overview and registry views, Staff and Compliance Officer workspaces, and both alternative appearances.',x+138,top-24,cw-138)
 para('<b>Suggested sponsor discussion</b><br/>Are the roles and workflow right for the intended SMEs?<br/><br/>Which questions, explanations and actions should the approved assessment use?<br/><br/>What evidence is needed for the final demonstration and acceptance?',x+138,top-133,cw-138,small)
-para('Implementation checks passed: 68 application tests and 22 browser tests, including automated accessibility checks. Human SME and screen-reader UAT, sponsor content approval and final handover remain outstanding.',M,71,C,small);c.showPage();c.save()
+para('Implementation checks passed: 68 application tests and 23 browser tests, including automated accessibility checks. Human SME and screen-reader UAT, sponsor content approval and final handover remain outstanding.',M,71,C,small);c.showPage();c.save()
 # Full-resolution, self-contained screenshot gallery for the requested complete capture set.
 items=[]
 for s in data['screens']:

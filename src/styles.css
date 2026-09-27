@@ -13,9 +13,12 @@
 /* Desktop branding stays anchored; only navigation scrolls on short windows. */
 @media(min-width:761px){
   .app-shell{background:linear-gradient(to right,var(--nav) 248px,var(--canvas) 248px)}
-  .sidebar{height:100dvh;overflow:hidden}
+  .sidebar{height:100dvh;overflow:hidden;padding-top:20px;padding-bottom:20px}
+  .sidebar .workspace-label{margin-top:20px}
+  .sidebar .organisation-name{padding-bottom:16px}
   .sidebar> :not(nav){flex-shrink:0}
-  .sidebar nav{min-height:0;overflow-y:auto;overscroll-behavior-y:contain;flex:1;align-content:start;padding:6px;margin:-6px}
+  .sidebar nav{gap:3px;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;flex:1;align-content:start;padding:6px;margin:-6px}
+  .sidebar nav button{min-height:36px;padding:8px 12px}
   .skip-link{left:268px}
 }
 @media(min-width:761px) and (max-width:1100px){.app-shell{background:linear-gradient(to right,var(--nav) 210px,var(--canvas) 210px)}.skip-link{left:230px}}
@@ -26,3 +29,6 @@
 /* Clipping also hides an unfocused link in full-page captures taken after scrolling. */
 .skip-link{top:12px;border-radius:8px;border:1px solid var(--border);clip-path:inset(50%);pointer-events:none}
 .skip-link:focus{clip-path:none;pointer-events:auto}
+
+.uat-banner{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:4px 12px;padding:7px 16px;background:var(--soft);color:var(--text);border-bottom:1px solid var(--border);font-size:12px;line-height:1.5}
+.uat-banner strong{letter-spacing:.3px}

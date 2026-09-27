@@ -147,3 +147,18 @@ test('desktop rail fills the full document while the panel stays fixed during sc
   }
   await page.request.put('/api/settings',{data:{appearance:'srec'}});
 });
+
+test('UAT banner identifies the environment and standard desktop navigation fits without scrolling',async({page})=>{
+  await page.goto('/');
+  await expect(page.getByText('UAT environment',{exact:true})).toBeVisible();
+  await login(page);
+  for(const width of [1440,1024,761]){
+    await page.setViewportSize({width,height:720});
+    await expect(page.getByText('UAT environment',{exact:true})).toBeVisible();
+    expect(await page.getByRole('navigation').evaluate(el=>el.scrollHeight<=el.clientHeight)).toBe(true);
+    await expect(page.getByRole('navigation').getByRole('button',{name:'Certificates',exact:true})).toBeInViewport();
+  }
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.getByText('UAT environment',{exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
