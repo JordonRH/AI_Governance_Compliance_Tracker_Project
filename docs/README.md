@@ -71,3 +71,7 @@ Earlier designs retain their proposed contracts and unresolved decisions at the 
 | package.json, package-lock.json | Supported commands and reproducible dependency versions |
 
 Personal `.agents/` files are ignored; no agent skill/plugin is required to run or maintain AITrace.
+
+## Sponsor showcase
+
+The [sidebar/showcase verification record](project/sidebar-showcase-verification-2026-09-27.md) includes diagnosis, automated results and repeatable generation of the nine-page sponsor PDF and complete fictional screenshot pack.

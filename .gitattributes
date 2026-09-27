@@ -1,0 +1,4 @@
+# Preserve generated sponsor artifacts byte-for-byte across platforms.
+*.pdf binary
+*.png binary
+*.zip binary

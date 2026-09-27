@@ -63,3 +63,13 @@ Use a fresh fictional database if you need an empty starting point; see [operati
 Notifications are in-app and require the server to run. Legacy free-text action owners need account assignment before delivery. Uploads are restricted attachments, not malware-scanned documents. PDF text uses a Latin font subset. Email notifications, public password recovery, sponsor-approved risk content and human acceptance remain outside the completed implementation evidence.
 
 No delete/archive workflow is implemented. For mistakes, edit records where supported, create a new submitted assessment/version when required, or use a separate demonstration database. Ask the operator for backup/restore or account recovery; do not edit database files directly.
+
+## Navigation and keyboard access
+
+On desktop, the sidebar stays attached to the viewport while the page scrolls. In a short window, scroll the navigation list or Tab through its buttons; the brand and organisation name remain anchored. The decorative sidebar footer is omitted in short desktop windows. At mobile widths, navigation remains a horizontally scrolling row above the content.
+
+Press Tab from the start of the workspace to reveal **Skip to content** near the top. Press Enter to move keyboard focus past navigation into the main content. Further Tab presses reach the current page's controls.
+
+The [sponsor showcase and layout verification](sidebar-showcase-verification-2026-09-27.md) documents the fictional screenshot pack, PDF and regeneration steps.
+
+The desktop sidebar background colour continues to the bottom of long pages; the navigation panel stays fixed while the page content scrolls.
