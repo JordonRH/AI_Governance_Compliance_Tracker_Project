@@ -1,8 +1,16 @@
 # Action and policy-review reminder planning
 
-Status: Partial implementation for GitHub issue #18
+## Current implementation note - 27 September 2026
+
+The pure planner is implemented in `server/domain/reminder-planning.js`; `server/notifications.js` and `server/index.js` now provide periodic in-app delivery, scoped inboxes, deduplication and settings. No email service is configured. Earlier unimplemented delivery statements are historical.
+
+For current operation and exact routes, use [development](../project/development.md), [architecture](../project/architecture.md) and [API reference](../project/api-reference.md).
+
+## Preserved design snapshot
+
+Historical status: Partial implementation for GitHub issue #18
 Prepared: 20 September 2026
-Decision state: Channel-neutral planning implemented; scheduling, delivery channels, persistence and permissions remain unapproved.
+Historical decision state: Channel-neutral planning implemented; scheduling, delivery channels, persistence and permissions remain unapproved.
 
 ## Current boundary
 

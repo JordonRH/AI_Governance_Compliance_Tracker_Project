@@ -1,5 +1,7 @@
 # Development progress
 
+Chronological history: earlier status tables and review steps refer to the code at their recorded dates. Use [development](development.md) for current commands, [traceability](capstone-requirements-traceability.md) for current scope and GitHub for live ticket status. Read the newest dated entries at the bottom for the latest work.
+
 ## 20 September 2026
 
 Jordon confirmed that requirements review is complete and approved React/Vite, Node.js/Express and SQLite. Initial implementation is led by Jordon, with Avnish, Ashvin and Noorpreet reviewing later. Actual review participation has not yet been recorded.
@@ -157,3 +159,7 @@ The audit backlog was implemented in sequenced commits with GitHub evidence comm
 Added organisation-scoped certificate staging, temporary 30-day self-signed generation, matching PEM replacement validation, expiry/fingerprint metadata and explicit restart-based server activation. Secret bundles remain outside Git. The normal local administrator now has a generated staged pair; its Windows directory ACL is restricted to the current account and SYSTEM. HTTP remains active until configuration/restart; no trust-store changes were made.
 
 Verification: 68 application tests and 14 browser tests passed, production build passed, npm audit reported zero vulnerabilities. A test HTTPS connection verified the generated certificate using an explicit test CA. The new page is included in automated accessibility checks across both palettes and light/dark modes. A browser test's required-field label locator was corrected before the final passing run.
+
+## 27 September 2026 - Documentation handover
+
+Reworked README/index and setup instructions, added standalone operations/API/contributor references, expanded the role-based demonstration guide, and labelled earlier designs/research/planning as historical where appropriate. A fresh checkout passed 68 application tests, 14 browser tests and build, plus operator checks for .env, first login, persisted data, backup/restore, verified HTTPS and HTTP recovery. See [documentation verification](documentation-verification-2026-09-27.md). These agent-run checks do not represent independent human UAT.

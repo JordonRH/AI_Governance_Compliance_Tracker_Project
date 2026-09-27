@@ -1,8 +1,16 @@
 # Governance action tracking design
 
-Status: Partial implementation for GitHub issue #17
+## Current implementation note - 27 September 2026
+
+The domain lifecycle plus persistence, assigned account owners, assessment links, API/UI, version conflicts and history are implemented in `server/domain/governance-action.js`, `server/app.js` and `src/workflows.jsx`. Earlier pending-integration statements below are historical.
+
+For current operation and exact routes, use [development](../project/development.md), [architecture](../project/architecture.md) and [API reference](../project/api-reference.md).
+
+## Preserved design snapshot
+
+Historical status: Partial implementation for GitHub issue #17
 Prepared: 20 September 2026
-Decision state: Pure lifecycle and timing aggregate implemented; persistence, permissions and interface remain unapproved.
+Historical decision state: Pure lifecycle and timing aggregate implemented; persistence, permissions and interface remain unapproved.
 
 ## Current boundary
 

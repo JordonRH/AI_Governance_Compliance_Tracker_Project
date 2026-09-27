@@ -1,8 +1,16 @@
 # Explainable risk-scoring module design
 
-Status: Partial implementation for GitHub issues #9 and #15
+## Current implementation note - 27 September 2026
+
+The pure evaluator is implemented in `server/domain/risk-scoring.js`; `server/assessment-definition.js` supplies explicitly synthetic demo rules to the integrated assessment workflow. Approved sponsor rules remain pending. Risk, approval and legal compliance remain distinct.
+
+For current operation and exact routes, use [development](../project/development.md), [architecture](../project/architecture.md) and [API reference](../project/api-reference.md).
+
+## Preserved design snapshot
+
+Historical status: Partial implementation for GitHub issues #9 and #15
 Prepared: 20 September 2026
-Decision state: Module seam and invariants proposed; questions, rules, labels and thresholds are unapproved.
+Historical decision state: Module seam and invariants proposed; questions, rules, labels and thresholds are unapproved.
 
 ## Purpose
 

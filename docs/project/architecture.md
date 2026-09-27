@@ -1,15 +1,16 @@
 # Application architecture
 
-Reviewed 26 September 2026. The capstone baseline is an Australian SME prototype. Sponsor content approval and human acceptance are separate from implementation.
+Reviewed 27 September 2026. The capstone baseline is an Australian SME prototype. Sponsor content approval and human acceptance are separate from implementation.
 
 ## Runtime and boundaries
 
-React/Vite talks to same-origin Express APIs. One Node process owns SQLite and the periodic reminder runner. The server binds only to loopback; optional PEM settings switch HTTP to HTTPS. SQLite schema migrations are additive through version 10. There is no cloud service, ORM, SSO or production SaaS integration.
+React/Vite talks to same-origin Express APIs. One Node process owns SQLite and the periodic reminder runner. The server binds only to loopback; optional PEM or staged-bundle settings switch HTTP to HTTPS. SQLite schema migrations are additive through version 10. There is no cloud service, ORM, SSO or production SaaS integration.
 
 | Module | Responsibility |
 | --- | --- |
 | src/main.jsx | Authentication shell, navigation, dashboard, admin accounts/appearance, disclosure |
 | src/registry.jsx | Registry forms, search, pagination, details and decision history |
+| src/certificates.jsx / server/certificates.js | Administrator staging/generation/replacement and private bundle validation |
 | src/workflows.jsx | Assessments, actions, policies, inbox and own-password pages |
 | src/forms.jsx / api.js | Accessible shared fields and same-origin API helper |
 | server/index.js / config.js | Validated runtime configuration, HTTP(S), Vite/static serving, reminder scheduling |
@@ -31,6 +32,8 @@ Registry entry -> assessment draft with definition snapshot -> immutable submitt
 Submitted results retain their definition/version and explanations. The registry/dashboard derive the latest submitted outcome per AI use. A new assessment creates a new historical row. Demonstration results never imply approval or legal certification. Approval is an independent registry field with recorded changes.
 
 Files are stored as SQLite blobs; every version has a SHA-256 digest, safe attachment name, reviewer and due date. The reminder runner selects latest policy versions and open actions, resolves active account recipients, and inserts notifications atomically with stable deduplication keys. Read state and run outcomes persist. Failed runs retry at the next configured interval.
+
+See [API reference](api-reference.md) for every route and request examples, [operations](operations.md) for database recovery/HTTPS, and [contributing](contributing.md) for changes and PRs.
 
 ## API groups
 

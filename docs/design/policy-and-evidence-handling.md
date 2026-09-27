@@ -1,8 +1,16 @@
 # Policy and evidence handling design
 
-Status: Partial implementation for GitHub issue #16
+## Current implementation note - 27 September 2026
+
+The domain intake validator is implemented. The running repository uses `server/policies.js` for scoped PDF/text validation, SQLite blob versions, downloads, checklist links and review dates. Storage and UI are now implemented; future retention/scanning decisions remain open.
+
+For current operation and exact routes, use [development](../project/development.md), [architecture](../project/architecture.md) and [API reference](../project/api-reference.md).
+
+## Preserved design snapshot
+
+Historical status: Partial implementation for GitHub issue #16
 Prepared: 20 September 2026
-Decision state: Intake validation seam implemented; storage, retrieval, permissions, retention and review metadata remain unapproved.
+Historical decision state: Intake validation seam implemented; storage, retrieval, permissions, retention and review metadata remain unapproved.
 
 ## Current boundary
 

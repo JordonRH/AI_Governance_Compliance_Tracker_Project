@@ -1,5 +1,7 @@
 # Proposal issue register
 
+Current context (27 September 2026): this preserves the original WBS mapping and dated planning audits. Later ticket titles/checklists follow the SME capstone scope. The [27 September reconciliation](github-reconciliation-2026-09-27.md) records 14 completed deliverables closed and 20 remaining open at that point; GitHub is authoritative for live status. Older statements that all issues remain open are historical.
+
 All 33 WBS activities from proposal section 7.4 have corresponding GitHub issues. These are draft planning records; suggested owners and estimates do not represent actual contributions or completed work.
 
 Acceptance criteria and dependency links are proposed for team review. Confirm actual assignees before work starts. Record progress, blockers, actual contributors and evidence on each issue. Requirements and architecture approval gates still apply.
