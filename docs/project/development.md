@@ -14,7 +14,7 @@ git clone https://github.com/JordonRH/AI_Governance_Compliance_Tracker_Project.g
 cd AI_Governance_Compliance_Tracker_Project
 ```
 
-Before PR #40 is merged, run `git switch alignment/capstone-requirements` to use the implementation described here. After merge, use `main`. If GitHub asks for access, sign in with an account authorised for the repository through your Git credential manager. Do not paste a password/token into a clone URL or tracked file.
+PR #40 has merged the application into `main`; use main for a normal checkout. To review an unmerged documentation PR, switch to its named head branch explicitly. If GitHub asks for access, sign in with an account authorised for the repository through your Git credential manager. Do not paste a password/token into a clone URL or tracked file.
 
 Install the exact lockfile dependencies:
 

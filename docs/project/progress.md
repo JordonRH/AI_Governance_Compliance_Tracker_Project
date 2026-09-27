@@ -163,3 +163,5 @@ Verification: 68 application tests and 14 browser tests passed, production build
 ## 27 September 2026 - Documentation handover
 
 Reworked README/index and setup instructions, added standalone operations/API/contributor references, expanded the role-based demonstration guide, and labelled earlier designs/research/planning as historical where appropriate. A fresh checkout passed 68 application tests, 14 browser tests and build, plus operator checks for .env, first login, persisted data, backup/restore, verified HTTPS and HTTP recovery. See [documentation verification](documentation-verification-2026-09-27.md). These agent-run checks do not represent independent human UAT.
+
+GitHub confirmed PR #40 merged into main as `38b7f5f` on 27 September. The subsequent standalone documentation handover is delivered on `docs/standalone-handover` in its own PR; earlier pending-merge notes are historical.

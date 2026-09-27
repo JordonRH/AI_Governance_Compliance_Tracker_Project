@@ -5,7 +5,7 @@ You can maintain this repository using a terminal, editor, browser and GitHub. A
 ## Pick and implement a change
 
 1. Read the relevant GitHub issue, its checked/unchecked criteria and latest evidence. Confirm scope and actual ownership. Closed implementation tickets do not imply sponsor approval.
-2. Begin with a clean checkout on the intended base. After PR #40 merges, main is the normal base. Before that, avoid creating a competing copy of its changes; work against its branch deliberately.
+2. Begin with a clean checkout on `main`, the normal base. PR #40 has merged the application there. Check other open PRs before starting overlapping work.
 3. Create a branch for your change:
 
 ```powershell
