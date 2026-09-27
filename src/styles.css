@@ -12,12 +12,13 @@
 
 /* Desktop branding stays anchored; only navigation scrolls on short windows. */
 @media(min-width:761px){
+  .app-shell{background:linear-gradient(to right,var(--nav) 248px,var(--canvas) 248px)}
   .sidebar{height:100dvh;overflow:hidden}
   .sidebar> :not(nav){flex-shrink:0}
   .sidebar nav{min-height:0;overflow-y:auto;overscroll-behavior-y:contain;flex:1;align-content:start;padding:6px;margin:-6px}
   .skip-link{left:268px}
 }
-@media(min-width:761px) and (max-width:1100px){.skip-link{left:230px}}
+@media(min-width:761px) and (max-width:1100px){.app-shell{background:linear-gradient(to right,var(--nav) 210px,var(--canvas) 210px)}.skip-link{left:230px}}
 @media(min-width:761px) and (max-height:650px){
   .sidebar .workspace-label{margin-top:20px}
   .sidebar-footer{display:none}

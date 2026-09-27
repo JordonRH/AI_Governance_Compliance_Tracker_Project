@@ -115,3 +115,35 @@ test('sidebar stays anchored through registry details, editing and action histor
   await row.getByRole('button', {name:'Edit action'}).click();
   await anchored();
 });
+
+test('desktop rail fills the full document while the panel stays fixed during scrolling', async ({page}) => {
+  await login(page);
+  for (const {width,appearance,theme} of ['srec','slate'].flatMap(appearance=>['light','dark'].flatMap(theme=>[1440,1024].map(width=>({width,appearance,theme}))))) {
+    await page.request.put('/api/settings',{data:{appearance}});
+    await page.reload();
+    await page.getByRole('navigation').waitFor();
+    if(await page.getByRole('button',{name:theme==='dark'?'Dark theme':'Light theme',exact:true}).count())await page.getByRole('button',{name:theme==='dark'?'Dark theme':'Light theme',exact:true}).click();
+    await page.setViewportSize({width,height:600});
+    await page.getByRole('navigation').getByRole('button',{name:'Accounts',exact:true}).click();
+    await page.getByRole('button',{name:'Manage admin@example.test',exact:true}).click();
+    const brand=page.locator('.sidebar .brand');
+    const initial=await brand.boundingBox();
+    await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
+    expect(await page.evaluate(()=>scrollY)).toBeGreaterThan(0);
+    expect((await brand.boundingBox()).y).toBe(initial.y);
+    expect((await page.locator('.sidebar').boundingBox()).y).toBe(0);
+    await page.evaluate(()=>scrollTo(0,0));
+    const png=await page.screenshot({fullPage:true});
+    const pixelPage=await page.context().newPage();
+    const colors=await pixelPage.evaluate(async base64=>{
+      const image=new Image();image.src='data:image/png;base64,'+base64;await image.decode();
+      const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+      const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);
+      return {top:[...ctx.getImageData(4,4,1,1).data],bottom:[...ctx.getImageData(4,image.height-4,1,1).data]};
+    },png.toString('base64'));
+    await pixelPage.close();
+    expect(colors.bottom).toEqual(colors.top);
+    await page.getByRole('button',{name:'Close account controls'}).click();
+  }
+  await page.request.put('/api/settings',{data:{appearance:'srec'}});
+});

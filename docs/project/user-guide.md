@@ -71,3 +71,5 @@ On desktop, the sidebar stays attached to the viewport while the page scrolls. I
 Press Tab from the start of the workspace to reveal **Skip to content** near the top. Press Enter to move keyboard focus past navigation into the main content. Further Tab presses reach the current page's controls.
 
 The [sponsor showcase and layout verification](sidebar-showcase-verification-2026-09-27.md) documents the fictional screenshot pack, PDF and regeneration steps.
+
+The desktop sidebar background colour continues to the bottom of long pages; the navigation panel stays fixed while the page content scrolls.
