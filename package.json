@@ -1,27 +1,32 @@
 {
-    "name":  "aitrace",
-    "version":  "0.1.0",
-    "private":  true,
-    "type":  "module",
-    "engines":  {
-                    "node":  "\u003e=26.5.0"
-                },
-    "scripts":  {
-                    "dev":  "node --watch-path=./server server/index.js",
-                    "build":  "vite build",
-                    "start":  "node server/index.js --production",
-                    "test":  "node --test",
-                    "test:e2e":  "playwright test",
-                    "test:e2e:install":  "playwright install chromium"
-                },
-    "dependencies":  {
-                         "express":  "^5.1.0",
-                         "react":  "^19.1.0",
-                         "react-dom":  "^19.1.0"
-                     },
-    "devDependencies":  {
-                            "@playwright/test":  "^1.55.0",
-                            "@vitejs/plugin-react":  "^5.0.0",
-                            "vite":  "^7.1.0"
-                        }
+  "name": "aitrace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=26.5.0"
+  },
+  "scripts": {
+    "dev": "node --watch-path=./server server/index.js",
+    "build": "vite build",
+    "start": "node server/index.js --production",
+    "test": "node --test",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
+    "account:create": "node server/create-account.js"
+  },
+  "dependencies": {
+    "@fontsource/noto-sans": "^5.3.0",
+    "express": "^5.1.0",
+    "pdfkit": "^0.20.2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "selfsigned": "^5.5.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.55.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "vite": "^7.1.0"
+  }
 }

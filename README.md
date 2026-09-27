@@ -1,12 +1,12 @@
 # AITrace
 
-AITrace is a local web application prototype that helps faculty register AI use, assess governance risk and track follow-up actions across education, administration and research.
+AITrace is a local web application prototype that helps Australian small and medium-sized enterprises register AI use, assess governance risk and track follow-up actions.
 
 Developed for the **University of Canberra ICT Capstone Project 2026-S2R-04 — AI Governance Compliance Tracker**, sponsored by **Sri Ramakrishna Engineering College**.
 
 ## Project status
 
-**Initial interface and backend ready for team review.** React/Vite, Express and SQLite provide a local overview and AI registry. Authentication and governance assessment are not implemented. Progressive implementation continues at Jordon's request, with small verified increments and team review pending.
+**Integrated capstone prototype, ready for review.** Registration/login, role controls, registry/disclosure, persisted demonstration assessments and explainable risk results, assigned actions, policy versions/reviews, in-app reminders, dashboard and PDF/CSV exports are implemented. Sponsor-approved assessment content and human acceptance remain pending. See the [user guide](docs/project/user-guide.md) and [acceptance checklist](docs/project/acceptance-checklist.md).
 
 The proposal's 33 work breakdown structure (WBS) activities are recorded in [GitHub Issues](https://github.com/JordonRH/AI_Governance_Compliance_Tracker_Project/issues). These were imported as draft planning records. Suggested owners, estimates, acceptance criteria and dependencies require team review; they do not establish completed work or actual contributions.
 
@@ -21,7 +21,7 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:5173. Stop with Ctrl+C. The backend creates `data/aitrace.sqlite` automatically. The registry starts empty; use **Load fictional examples** to add demonstration data.
+Open http://127.0.0.1:5173. Stop with Ctrl+C. The backend creates `data/aitrace.sqlite` automatically. A fresh checkout has no default login: follow the [account bootstrap instructions](docs/project/development.md). The registry starts empty; use **Load fictional examples** to add demonstration data.
 
 ```powershell
 npm run build
@@ -36,12 +36,12 @@ npm run test:e2e:install
 npm run test:e2e
 ```
 
-Checks cover the API, SQLite persistence and browser workflows. See [local development](docs/project/development.md) for details. Use fictional data only; login and role permissions are not available yet.
+Checks cover authentication, organisation isolation, the registry API, SQLite persistence, reports and browser workflows. See [local development](docs/project/development.md) for details. Use fictional data only.
 
 ## Intended workflow
 
 1. **Register** an AI tool, system or use case and its purpose and data use.
-2. **Classify** its use within education, administration or research.
+2. **Describe** its business area, data sensitivity and approval state.
 3. **Assess** governance through a structured questionnaire.
 4. **Understand risk** through an explainable, rules-based result.
 5. **Take action** by tracking owners, due dates and progress.
@@ -49,7 +49,7 @@ Checks cover the API, SQLite persistence and browser workflows. See [local devel
 
 The documented functional baseline includes authentication and role-based access, an AI registry, governance assessments, risk explanations, policy/evidence handling, action tracking, review reminders, dashboards, PDF/CSV reporting and Shadow AI self-reporting.
 
-Exact roles, approval workflows, assessment questions, framework mappings, scoring thresholds and the meaning of “compliance status” remain subject to confirmation. The team will not invent governance rules to fill these gaps.
+The capstone baseline defines Administrator, Compliance Officer and Staff User roles. Their permission matrix, approval workflows, assessment questions, scoring thresholds and the meaning of "compliance status" require traceable decisions. The team will not invent governance rules to fill these gaps.
 
 ## Agreed technology direction
 
@@ -63,10 +63,10 @@ Exact roles, approval workflows, assessment questions, framework mappings, scori
 | Development and demonstration | Local deployment |
 | Application structure | A simple modular monolith is preferred |
 | Database | SQLite through the built-in Node.js SQLite module |
-| Authentication and authorisation implementation | TBD |
-| File storage, dashboard libraries, reporting and reminders | TBD |
+| Authentication and authorisation | Local accounts, scrypt passwords, opaque sessions and server-enforced permissions |
+| File storage and delivery channels | Versioned SQLite policy blobs and scheduled in-app notifications |
 
-Unresolved technologies and governance rules remain open. The registry is a local demonstration, not an authenticated institutional system. Read the [documentation index](docs/README.md), [local development](docs/project/development.md), [architecture](docs/project/architecture.md) and [progress](docs/project/progress.md) before extending it.
+Governance content review remains open. The app is an authenticated local prototype; optional TLS and storage-encryption acceptance are documented in the [security plan](docs/project/security-configuration.md). Read the [documentation index](docs/README.md), [local development](docs/project/development.md), [architecture](docs/project/architecture.md) and [progress](docs/project/progress.md) before extending it.
 
 ## Team and collaboration
 
@@ -113,7 +113,7 @@ Out of scope:
 - Automatic network/device monitoring or discovery of Shadow AI.
 - Deepfake detection and AI-content forensics.
 - Machine-learning-based compliance decisions.
-- Real sensitive student, staff or research-participant data.
+- Real client, employee or third-party personal information.
 - Enterprise SSO and live institutional integrations unless subsequently approved.
 - LLM-based compliance decisions or policy analysis unless separately approved.
 

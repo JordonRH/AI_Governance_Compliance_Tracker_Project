@@ -1,94 +1,59 @@
-# Initial application architecture
+# Application architecture
 
-## Agreed direction
+Reviewed 26 September 2026. The capstone baseline is an Australian SME prototype. Sponsor content approval and human acceptance are separate from implementation.
 
-On 20 September 2026, Jordon confirmed React with Vite, Node.js with Express, and SQLite for the local prototype. Requirements review was reported complete. Jordon leads the initial work; the team will review before further allocation. Sponsor-dependent governance decisions remain unresolved.
+## Runtime and boundaries
 
-The first checkpoint delivered an initial React interface with a working Node.js backend; Jordon subsequently authorised progressive implementation. Authentication and later governance modules are outside this increment.
+React/Vite talks to same-origin Express APIs. One Node process owns SQLite and the periodic reminder runner. The server binds only to loopback; optional PEM settings switch HTTP to HTTPS. SQLite schema migrations are additive through version 10. There is no cloud service, ORM, SSO or production SaaS integration.
 
-## Structure
-
-| Location | Responsibility |
+| Module | Responsibility |
 | --- | --- |
-| `src/main.jsx` | Overview, registry, record form, governance notes and project guide |
-| `src/styles.css` | Responsive layout, typography, colours and interaction states |
-| `server/index.js` | Local HTTP server and development/built frontend serving |
-| `server/config.js` | Validated, immutable runtime configuration and local-host policy |
-| `server/app.js` | JSON API, input validation and registry operations |
-| `server/database.js` | SQLite connection and initial schema migration |
-| `server/domain/risk-scoring.js` | Pure deterministic evaluation, validation and explanation module |
-| `server/domain/evidence-intake.js` | Pure file-policy validation, digest and assessment-link descriptor module |
-| `server/domain/governance-action.js` | Pure action lifecycle, versioned history and due-date classification module |
-| `server/domain/reminder-planning.js` | Pure controlled-date reminder intent and idempotency planning module |
-| `server/domain/dashboard-summary.js` | Pure authorised-scope filtering and reconciled dashboard aggregation module |
-| `server/domain/validation.js` | Shared immutable findings, deep freezing, text, date and timestamp validation |
-| `tests/api/registry-api.test.js` | API behaviour and persistence checks |
-| `tests/domain/risk-scoring.test.js` | Synthetic scoring contracts, validation and deterministic trace checks |
-| `tests/domain/evidence-intake.test.js` | Synthetic evidence policy, type, size, signature and link validation checks |
-| `tests/domain/governance-action.test.js` | Action lifecycle, concurrency, history and timing boundary checks |
-| `tests/domain/reminder-planning.test.js` | Reminder windows, cadence, ordering and repeated-run checks |
-| `tests/domain/dashboard-summary.test.js` | Scope isolation, restricted-state and total-reconciliation checks |
-| `tests/e2e/registry.spec.js` | Browser workflow and responsive checks |
-| `tests/e2e/theme.spec.js` | Theme, record-detail and responsive browser checks |
-| `docs/project/` | Setup, design decisions, progress and review notes |
-| `docs/source-materials/` | Original university and project planning inputs |
+| src/main.jsx | Authentication shell, navigation, dashboard, admin accounts/appearance, disclosure |
+| src/registry.jsx | Registry forms, search, pagination, details and decision history |
+| src/workflows.jsx | Assessments, actions, policies, inbox and own-password pages |
+| src/forms.jsx / api.js | Accessible shared fields and same-origin API helper |
+| server/index.js / config.js | Validated runtime configuration, HTTP(S), Vite/static serving, reminder scheduling |
+| server/auth.js | Scrypt hashes, opaque sessions, live role resolution, password changes/resets, revocation |
+| server/app.js | Request security, registry/actions/accounts/settings/dashboard/report routes |
+| server/assessments.js / assessment-definition.js | Snapshot definitions, draft revisions, immutable submission and demo evaluation |
+| server/policies.js | Scoped versioned document storage, download and review dates |
+| server/notifications.js | Scoped in-app delivery, idempotency, inbox and scheduler-run evidence |
+| server/reporting.js | Formula-safe CSV and wrapped/font-embedded PDF |
+| server/database.js | SQLite schema and migration entry point |
+| server/domain/ | Pure scoring, action lifecycle, reminder planning, dashboard and validation modules |
 
-One Node process serves the frontend and API on the same local origin. React uses relative `/api` requests. SQLite access stays inside the backend. There is no cloud service, ORM or separate database server.
+The earlier evidence-intake domain module remains available for richer configurable policies; current upload routes enforce a narrow PDF/text policy directly. Source design documents describe historical/proposed interfaces; current implemented behaviour is documented here and in tests.
 
-The first UI is intentionally small enough to follow in one file. Split screens and form components when later functionality makes their responsibilities clearer; do not add abstractions solely for anticipated work.
+## Persisted workflow
 
-## Registry data
+Registry entry -> assessment draft with definition snapshot -> immutable submitted responses and deterministic result -> linked, assigned actions -> policy versions/checklist links and scheduled reviews -> scoped notifications -> dashboard/export.
 
-The `ai_uses` table stores `id`, `name`, `purpose`, `owner`, `category`, `data_description`, `created_at` and `updated_at`. IDs are generated by the backend. The category is one of Education, Administration or Research. Schema version 1 is recorded in `schema_migrations`.
+Submitted results retain their definition/version and explanations. The registry/dashboard derive the latest submitted outcome per AI use. A new assessment creates a new historical row. Demonstration results never imply approval or legal certification. Approval is an independent registry field with recorded changes.
 
-Queries use bound parameters. Creation and modification timestamps are retained, but they do not constitute an audit history. No account, approval or assessment tables exist yet. The derived status `Not assessed` is returned to the UI without calculating a risk level.
+Files are stored as SQLite blobs; every version has a SHA-256 digest, safe attachment name, reviewer and due date. The reminder runner selects latest policy versions and open actions, resolves active account recipients, and inserts notifications atomically with stable deduplication keys. Read state and run outcomes persist. Failed runs retry at the next configured interval.
 
-The initial single-category choice and data-description field are provisional. The later agreed model must address multi-category use if required, data sensitivity, permissions, approval records, institutional separation and status history.
+## API groups
 
-## API
-
-| Method and route | Behaviour |
+| Routes | Access |
 | --- | --- |
-| `GET /api/health` | Confirms API/database access and local-prototype mode |
-| `GET /api/registry` | Lists records; accepts `q` and `category` filters |
-| `GET /api/registry/:id` | Returns one record or 404 |
-| `POST /api/registry` | Validates and creates a record |
-| `PUT /api/registry/:id` | Validates and replaces editable record fields |
-| `POST /api/examples` | Adds three fictional examples without duplicates |
-| `GET /api/overview` | Returns total, unassessed and category counts |
+| /api/auth/login, session, logout | Login/session lifecycle |
+| /api/auth/password | Authenticated own password, including mandatory post-reset flow |
+| /api/accounts, /accounts/:id/password, /accounts/:id, /accounts/audit | Administrator, own organisation |
+| /api/settings | Members read; Administrator writes appearance |
+| /api/registry, /registry/:id, /registry/:id/history, /shadow-reports | Scoped reads/disclosure; formal create/update restricted |
+| /api/assessments | Submit roles; staff can list/edit their own drafts only |
+| /api/actions, /action-owners | Managers create/update; staff list their assigned actions |
+| /api/policies, /policies/:id/download, /policies/:id/review | Members read/download; managers upload/review |
+| /api/notifications, /notifications/:id/read | Recipient and organisation scoped |
+| /api/reminders/settings, /reminders/run, /reminders/plan | Managers inspect/run; Administrator configures |
+| /api/dashboard, /reports/compliance.csv, /reports/compliance.pdf | Role-scoped summaries; export permission required |
 
-Create and update requests require JSON fields `name`, `purpose`, `owner`, `category` and `dataDescription`. Empty or invalid values receive HTTP 400 with field errors. Unknown IDs return 404. Non-JSON writes return 415. The body limit is 32 KB. The UI calculates displayed counts from its latest registry response; the overview endpoint also exposes the same totals for later consumers.
+Writes use JSON, bound SQL parameters and server-side scope checks. Binary policy downloads and PDF/CSV exports use attachment responses. API errors are JSON; unexpected details are not sent to clients. Draft revisions and action versions reject stale writes.
 
-## Interface decisions
+## Remaining architectural work
 
-The interface uses a dark sidebar, neutral content areas and restrained green accents. Navigation separates overview, registry, governance information and project guidance. Labels use plain language and do not imply completed compliance checks.
+Actual encrypted-volume/database evidence, retention/deletion policy, shared persistent throttling for multi-process hosting, additional font/script support and production deployment are not claimed. External email delivery and public account recovery are not configured. See the security plan and acceptance checklist.
 
-The registry supports creation, editing, search and category filters. A native modal dialog provides keyboard focus containment and Escape dismissal. Inputs have visible labels, length limits and required validation. Empty, loading, success and error states are explicit. Tables scroll within their container on narrow screens.
+## Certificate administration
 
-## Boundaries and deferred work
-
-This increment is an unauthenticated local demonstration, explicitly allowed to progress before the complete authentication-dependent registry ticket. It is not completion of FR-01, FR-02, FR-04 or the whole dashboard requirement.
-
-Authentication/RBAC, governance rules, assessments, approval workflows, actions, evidence files, reminders, PDF/CSV exports, Shadow AI reporting and audit history remain open. Do not infer Low/Medium/High risk from category or descriptive text.
-
-Before implementing the rules engine, agree the governing sources, questions, thresholds and terminology. A future assessment should retain its rule version and explain its result. This document records that design direction without selecting a governance framework.
-
-The proposed scoring seam is documented in `docs/design/risk-scoring-module.md`. It uses a pure `evaluateAssessment(definition, responses, context)` interface so deterministic validation, evaluation and explanation stay in one deep module. Database and HTTP adapters remain outside that seam. The pure scoring module now exists, but it has no authorised rule content and is not connected to assessment persistence, API routes or the interface.
-
-The proposed authentication seam is documented in `docs/design/authentication-and-authorization.md`. It separates request authentication from action/resource authorisation and denies protected routes by default. The design recommends opaque server-side sessions rather than browser storage. No account/session schema or route exists because roles, account bootstrap, password policy, session lifetime and password-hashing technology still require approval.
-
-The proposed assessment seam is documented in `docs/design/governance-assessment-module.md`. It owns draft lifecycle, response validation, concurrency and immutable submission, then hands a completed response set to the separate scoring module. No questionnaire schema or interface exists because content, evidence and permission decisions remain unapproved.
-
-## Follow-up interface increment
-
-`src/themes.css` contains temporary theme overrides and detail-view layout. Theme state is a browser preference, independent of registry data and server permissions. Optional localStorage reads and writes are guarded so storage restrictions do not prevent application use.
-
-Record names open a native read-only dialog showing the already-loaded record fields, dates and Not assessed status. Its explicit Edit record action opens the existing form. No database migration or governance rule is introduced.
-
-The proposed evidence intake seam is documented in `docs/design/policy-and-evidence-handling.md`. It validates candidate bytes against an approved versioned policy and returns a digest-bearing descriptor without writing or serving the file. Upload, retrieval, storage, malware controls and permissions remain deferred until their design and authentication dependencies are approved.
-
-The governance action seam is documented in `docs/design/governance-action-tracking.md`. It owns the three ticket-defined statuses, optimistic version checks, change history and controlled-date timing classification. Persistence, authenticated actor identity, permission checks, API routes and interface integration remain outside the module.
-
-The reminder planning seam is documented in `docs/design/reminder-planning.md`. It creates channel-neutral reminder intents from approved timing rules and a controlled date. Scheduling, recipient resolution, delivery adapters, retries and delivery history remain outside the pure module.
-
-The dashboard summary seam is documented in `docs/design/dashboard-summary.md`. It applies a server-authorised institution/category scope before aggregating registry, risk and action counts, and marks unavailable capabilities as restricted. Role-to-scope mapping, persisted assessment/action sources, API routes and interface integration remain deferred.
+`server/certificates.js` validates certificate/key pairs, generates temporary local certificates and atomically stages organisation-specific private bundles. `src/certificates.jsx` exposes metadata, generation and replacement to Administrators through `/api/certificates`, `/generate` and `/replace`. The operator chooses an active bundle using process configuration and restarts the shared server. Private key material never appears in API responses. See the security configuration document for Windows ACL and trust requirements.

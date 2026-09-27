@@ -19,7 +19,7 @@ const context = { asOfDate: '2026-09-21' };
 test('filters before aggregating and reconciles visible totals', () => {
   const result = buildDashboardSnapshot(scope, records, actions, context);
   assert.equal(result.status, 'complete');
-  assert.deepEqual(result.registry, { total: 2, assessed: 1, notAssessed: 1, byCategory: { Education: 1, Administration: 0, Research: 1 } });
+  assert.deepEqual(result.registry, { total: 2, assessed: 1, notAssessed: 1, byCategory: { Education: 1, Research: 1 } });
   assert.deepEqual(result.risk, { status: 'available', total: 1, byOutcome: [{ id: 'synthetic-review', label: 'Synthetic review', count: 1 }] });
   assert.deepEqual(result.actions, { status: 'available', total: 2, outstanding: 1, overdue: 1, byStatus: { 'Not Started': 0, 'In Progress': 1, Complete: 1 } });
   assert.equal(JSON.stringify(result).includes('secret'), false);
@@ -38,7 +38,7 @@ test('restricted summaries are explicit rather than reported as zero', () => {
 test('authorised category filters preserve reconciliation', () => {
   const result = buildDashboardSnapshot(scope, records, actions, { ...context, category: 'Research' });
   assert.equal(result.registry.total, 1);
-  assert.deepEqual(result.registry.byCategory, { Education: 0, Administration: 0, Research: 1 });
+  assert.deepEqual(result.registry.byCategory, { Education: 0, Research: 1 });
   assert.equal(result.risk.total, 1);
   assert.equal(result.actions.total, 1);
 });

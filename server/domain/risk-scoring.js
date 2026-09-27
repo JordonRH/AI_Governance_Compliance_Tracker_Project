@@ -4,7 +4,6 @@ const states = new Set(['draft', 'approved', 'retired']);
 const questionTypes = new Set(['boolean', 'singleChoice', 'number']);
 const operators = new Set(['equals', 'oneOf', 'greaterThanOrEqual', 'lessThanOrEqual']);
 const contextFields = new Set(['category']);
-const categories = new Set(['Education', 'Administration', 'Research']);
 
 function validateDefinition(definition) {
   const findings = [];
@@ -15,7 +14,7 @@ function validateDefinition(definition) {
     if (!text(definition[key])) findings.push(finding('INVALID_DEFINITION_FIELD', `${key} is required.`, `definition.${key}`));
   }
   if (!isDateOnly(definition.effectiveFrom)) findings.push(finding('INVALID_EFFECTIVE_DATE', 'effectiveFrom must be a real date in YYYY-MM-DD format.', 'definition.effectiveFrom'));
-  if (!Array.isArray(definition.appliesTo) || definition.appliesTo.length === 0 || new Set(definition.appliesTo).size !== definition.appliesTo.length || definition.appliesTo.some(category => !categories.has(category))) findings.push(finding('INVALID_APPLICABILITY', 'appliesTo must contain unique supported categories.', 'definition.appliesTo'));
+  if (!Array.isArray(definition.appliesTo) || definition.appliesTo.length === 0 || new Set(definition.appliesTo).size !== definition.appliesTo.length || definition.appliesTo.some(category => !text(category))) findings.push(finding('INVALID_APPLICABILITY', 'appliesTo must contain unique supported categories.', 'definition.appliesTo'));
   if (!states.has(definition.status)) findings.push(finding('INVALID_DEFINITION_STATE', 'Definition status must be draft, approved or retired.', 'definition.status'));
   else if (definition.status !== 'approved') findings.push(finding('DEFINITION_NOT_APPROVED', 'Only an approved definition can produce an evaluation.', 'definition.status'));
   if (!definition.approval || !isTimestamp(definition.approval.approvedAt) || !text(definition.approval.approvedBy)) {
@@ -68,7 +67,7 @@ function validateDefinition(definition) {
       if (condition?.input === 'response' && !questions.has(condition.id)) findings.push(finding('UNKNOWN_QUESTION_REFERENCE', 'The condition references an unknown question.', `${conditionPath}.id`));
       if (condition?.input === 'context' && !contextFields.has(condition.id)) findings.push(finding('UNKNOWN_CONTEXT_REFERENCE', 'The condition references an unknown context field.', `${conditionPath}.id`));
       if (!operators.has(condition?.operator)) findings.push(finding('INVALID_CONDITION_OPERATOR', 'The condition uses an unsupported operator.', `${conditionPath}.operator`));
-      const target = condition?.input === 'response' ? questions.get(condition.id) : condition?.input === 'context' ? { type: 'singleChoice', options: [...categories] } : null;
+      const target = condition?.input === 'response' ? questions.get(condition.id) : condition?.input === 'context' ? { type: 'singleChoice', options: definition.appliesTo } : null;
       const values = condition?.operator === 'oneOf' ? condition.value : [condition?.value];
       const numericOperator = ['greaterThanOrEqual', 'lessThanOrEqual'].includes(condition?.operator);
       const invalidValue = condition?.operator === 'oneOf' ? !Array.isArray(condition.value) || condition.value.length === 0
@@ -112,7 +111,7 @@ function validateInputs(definition, responses, context) {
   }
   if (!context || typeof context !== 'object' || Array.isArray(context)) return [...findings, finding('INVALID_CONTEXT', 'Evaluation context must be an object.', 'context')];
   for (const key of Object.keys(context).sort()) if (!contextFields.has(key) && key !== 'evaluatedAt') findings.push(finding('UNKNOWN_CONTEXT_INPUT', 'The context field is not supported.', `context.${key}`));
-  if (!categories.has(context.category)) findings.push(finding('INVALID_CATEGORY', 'Context category must be Education, Administration or Research.', 'context.category'));
+  if (!text(context.category)) findings.push(finding('INVALID_CATEGORY', 'Context category must be a non-empty approved applicability value.', 'context.category'));
   if (!isTimestamp(context.evaluatedAt)) findings.push(finding('INVALID_EVALUATED_AT', 'evaluatedAt must be a UTC ISO timestamp supplied by the caller.', 'context.evaluatedAt'));
   if (Array.isArray(definition.appliesTo) && !definition.appliesTo.includes(context.category)) findings.push(finding('DEFINITION_NOT_APPLICABLE', 'The definition does not apply to this category.', 'context.category'));
   return findings;

@@ -1,159 +1,103 @@
-import React, { useEffect, useRef, useState } from 'react';
+import {CertificatesPage} from './certificates.jsx';
+import {RegistryPage} from './registry.jsx';
+import React, { useEffect, useState, useId } from 'react';
 import { createRoot } from 'react-dom/client';
+import {Field,FormNote} from './forms.jsx';
+import {api,json} from './api.js';
+import {AssessmentsPage,ActionsPage,PoliciesPage,NotificationsPage,SecurityPage} from './workflows.jsx';
 import './styles.css';
 import './themes.css';
 
-const categories = ['Education', 'Administration', 'Research'];
-const blankRecord = { name: '', purpose: '', owner: '', category: 'Education', dataDescription: '' };
-const pages = { overview: 'Overview', registry: 'AI registry', governance: 'Governance', guide: 'Project guide' };
+const blankRecord = { name:'', owner:'', businessArea:'', purpose:'', dataDescription:'', dataSensitivity:'Not classified', approvalStatus:'Not reviewed' };
+function Brand(){return <div className="brand"><span className="brand-mark" aria-hidden="true">A</span><span>AITrace<small>AI governance workspace</small></span></div>}
 
-async function request(path, options = {}) {
-  const response = await fetch(`/api${path}`, options);
-  const body = await response.json();
-  if (!response.ok) throw Object.assign(new Error(body.error || 'Request failed.'), { fields: body.fields });
-  return body;
+
+
+function Login({onLogin}) {
+  const [form,setForm]=useState({login:'',password:''}),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+  async function submit(event){event.preventDefault();setBusy(true);setError('');try{const result=await api('/auth/login',json('POST',form));onLogin(result.principal);}catch(e){setError(e.message);}finally{setBusy(false);}}
+  return <main className="login-layout"><section className="login-intro"><p className="eyebrow">Clarity. Accountability. Confidence.</p><h2>Know where AI fits<br/>in your business.</h2><p>One place to understand your AI tools, document their use, and keep your team accountable.</p><div className="login-points"><span>01 / Register your AI tools</span><span>02 / Understand your exposure</span><span>03 / Build responsible habits</span></div></section><section className="panel form-panel"><p className="eyebrow">AITrace for Australian SMEs</p><h1>Sign in</h1><p className="subtitle">Use your organisation account to access governance records.</p>
+    {error&&<p className="error" role="alert">{error}</p>}<form onSubmit={submit}><FormNote/>
+      <Field>Login<input autoComplete="username" value={form.login} onChange={e=>setForm({...form,login:e.target.value})} required /></Field>
+      <Field>Password<input type="password" autoComplete="current-password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required /></Field>
+      <button className="primary" disabled={busy}>{busy?'Signing in...':'Sign in'}</button>
+    </form></section></main>;
 }
 
-function App() {
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('aitrace-theme') === 'dark' ? 'dark' : 'light'; }
-    catch { return 'light'; }
-  });
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    try { localStorage.setItem('aitrace-theme', theme); } catch { /* Storage is optional. */ }
-  }, [theme]);
-  const [viewing, setViewing] = useState(null);
-  const detailDialog = useRef(null);
-  useEffect(() => { if (viewing) detailDialog.current.showModal(); }, [viewing]);
-  const [page, setPage] = useState('overview');
-  const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('All categories');
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(blankRecord);
-  const [formError, setFormError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [seeding, setSeeding] = useState(false);
-  const dialog = useRef(null);
-  const nameInput = useRef(null);
-
-  async function load() {
-    setLoading(true);
-    setError('');
-    try { const data = await request('/registry'); setRecords(data.records); }
-    catch (err) { setError(err.message || 'Cannot connect to the local server.'); }
-    finally { setLoading(false); }
+function AccountsPage({principal,onSessionEnded}) {
+  const [accounts,setAccounts]=useState([]), [error,setError]=useState(''), [notice,setNotice]=useState('');
+  const [selected,setSelected]=useState(null), [busy,setBusy]=useState(false), [query,setQuery]=useState(''),[audit,setAudit]=useState([]);
+  async function load(){const result=await api('/accounts');setAccounts(result.accounts);setAudit((await api('/accounts/audit')).events);}
+  useEffect(()=>{load().catch(e=>setError(e.message))},[]);
+  async function create(event){
+    event.preventDefault();const form=event.currentTarget;setBusy(true);setError('');setNotice('');
+    try {await api('/accounts',json('POST',Object.fromEntries(new FormData(form))));form.reset();await load();setNotice('Account created.');}
+    catch(e){setError(e.message)}finally{setBusy(false)}
   }
-  useEffect(() => { load(); }, []);
-
-  function navigate(next) { setPage(next); setNotice(''); }
-  function openForm(record = null) {
-    setEditing(record);
-    setForm(record ? { ...record } : { ...blankRecord });
-    setFormError(''); setFieldErrors({});
-    dialog.current.showModal();
-    nameInput.current?.focus();
-  }
-  async function save(event) {
-    event.preventDefault();
-    if (saving) return;
-    setSaving(true); setFormError(''); setFieldErrors({});
+  async function update(event,kind){
+    event.preventDefault();const form=event.currentTarget, values=Object.fromEntries(new FormData(form));setError('');setNotice('');
+    if(kind==='password' && values.password!==values.confirmPassword){setError('The new passwords must match.');return;}
+    setBusy(true);
     try {
-      const saved = await request(editing ? `/registry/${editing.id}` : '/registry', {
-        method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form)
-      });
-      setRecords(current => editing ? current.map(record => record.id === saved.id ? saved : record) : [saved, ...current]);
-      dialog.current.close();
-      setNotice(editing ? 'Record updated.' : 'AI use registered.');
-      setQuery(''); setCategory('All categories'); setPage('registry');
-    } catch (err) { setFormError(err.message); setFieldErrors(err.fields || {}); }
-    finally { setSaving(false); }
+      await api(`/accounts/${selected.id}${kind==='password'?'/password':''}`,json(kind==='password'?'POST':'PATCH',kind==='password'?{password:values.password}:{role:values.role,status:values.status}));
+      form.reset();setSelected(null);
+      if(selected.id===principal.accountId){onSessionEnded();return;}
+      await load();setNotice(kind==='password'?'Password reset. Existing sessions have been signed out.':'Account access updated. Existing sessions have been signed out.');
+    }catch(e){setError(e.message)}finally{setBusy(false)}
   }
-  async function addExamples() {
-    setSeeding(true); setNotice('');
-    try {
-      const { added } = await request('/examples', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-      await load(); setNotice(added ? `${added} fictional examples added.` : 'Fictional examples are already in the registry.');
-    } catch (err) { setError(err.message); }
-    finally { setSeeding(false); }
-  }
-  const filtered = records.filter(record => (category === 'All categories' || record.category === category) &&
-    [record.name, record.owner, record.purpose].some(value => value.toLowerCase().includes(query.trim().toLowerCase())));
-  const formatDate = value => new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
-
-  function registryTable(items) {
-    return <div className="table-scroll"><table><caption className="sr-only">Registered AI uses</caption>
-      <thead><tr><th scope="col">AI use</th><th scope="col">Category</th><th scope="col">Owner</th><th scope="col">Assessment</th><th scope="col"><span className="sr-only">Record actions</span></th></tr></thead>
-      <tbody>{items.map(record => <tr key={record.id}>
-        <td><button className="record-link" onClick={() => setViewing(record)}>{record.name}</button><span className="record-sub">Updated {formatDate(record.updatedAt)}</span></td>
-        <td><span className={`category ${record.category.toLowerCase()}`}>{record.category}</span></td><td>{record.owner}</td>
-        <td><span className="status">Not assessed</span></td><td><button className="text-button" aria-label={`Edit ${record.name}`} onClick={() => openForm(record)}>Edit</button></td>
-      </tr>)}</tbody></table></div>;
-  }
-  function emptyState(search = false) {
-    return <div className="empty"><span className="eyebrow">{search ? 'Refine your search' : 'Start with visibility'}</span>
-      <h3>{search ? 'No matching AI uses' : 'Your AI registry starts here'}</h3>
-      <p>{search ? 'Try a different name, owner or category.' : 'Record the purpose, owner and data use of your first AI tool. Use fictional information for this prototype.'}</p>
-      {search ? <button className="secondary" onClick={() => { setQuery(''); setCategory('All categories'); }}>Clear filters</button> :
-        <div className="button-row"><button className="primary" onClick={() => openForm()}>Register AI use</button><button className="secondary" disabled={seeding} onClick={addExamples}>{seeding ? 'Adding examples...' : 'Load fictional examples'}</button></div>}
-    </div>;
-  }
-  return <div className="app-shell">
-    <a className="skip-link" href="#main">Skip to content</a>
-    <aside className="sidebar">
-      <a className="brand" href="#" onClick={event => { event.preventDefault(); navigate('overview'); }}><span className="brand-mark" aria-hidden="true">A</span><span>AITrace<small>Governance workspace</small></span></a>
-      <p className="nav-label">Workspace</p>
-      <nav aria-label="Main navigation">{Object.entries(pages).map(([key, label], i) => <button key={key} aria-current={page === key ? 'page' : undefined} onClick={() => navigate(key)}><span className="nav-number" aria-hidden="true">0{i + 1}</span>{label}</button>)}</nav>
-      <div className="sidebar-footer"><span className="sidebar-tag">Capstone prototype</span><p>University of Canberra</p><small>2026-S2R-04</small></div>
-    </aside>
-    <div className="workspace">
-      <header className="topbar"><span>Institution workspace <span className="topbar-divider">/</span> <strong>{pages[page]}</strong></span><div className="topbar-actions"><button className="secondary theme-toggle" aria-pressed={theme === 'dark'} onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}>Dark theme</button><span className="local-badge">Local prototype</span></div></header>
-      <main id="main" tabIndex="-1">
-        <div className="page-heading"><div><p className="eyebrow">AI governance, made visible</p><h1>{pages[page]}</h1><p className="subtitle">{page === 'overview' ? 'Understand where AI is used. Build a clearer picture of governance.' : page === 'registry' ? 'A shared record of AI tools, their purpose and the people responsible.' : page === 'governance' ? 'Define the rules before drawing conclusions.' : 'A practical foundation, with a clear record of what comes next.'}</p></div>
-          {['overview', 'registry'].includes(page) && <button className="primary" onClick={() => openForm()}>Register AI use</button>}
-        </div>
-        <div className="prototype-note">Local demonstration with fictional data. Authentication and governance assessment are not implemented yet.</div>
-        {notice && <p className="notice" role="status">{notice}</p>}
-        {error && <div className="error" role="alert">{error} <button className="text-button" onClick={load}>Retry loading</button></div>}
-
-        {page === 'overview' && <>
-          <section className="intro-panel"><div><span className="eyebrow">Your governance starting point</span><h2>Good oversight starts<br />with knowing what is in use.</h2><p>Bring AI use into one place. Record its purpose and data use, then prepare for a consistent governance review.</p><button className="light-button" onClick={() => navigate('registry')}>Explore the registry</button></div><div className="intro-aside"><span>01</span><p>Register first.<br />Assess with agreed rules.</p><small>No risk ratings are inferred.</small></div></section>
-          <section className="metrics" aria-label="Registry summary"><article><p>Registered AI uses</p><strong>{loading || error ? 'Unavailable' : records.length}</strong><small>Recorded in this workspace</small></article><article><p>Awaiting assessment</p><strong>{loading || error ? 'Unavailable' : records.length}</strong><small>Assessment rules are not configured</small></article><article><p>Areas represented</p><strong>{loading || error ? 'Unavailable' : `${new Set(records.map(r => r.category)).size} / 3`}</strong><small>Education, administration, research</small></article></section>
-          <div className="overview-grid"><section className="panel"><div className="panel-heading"><div><p className="eyebrow">Institutional visibility</p><h2>AI use by area</h2></div><span className="muted">{loading || error ? 'Data unavailable' : `${records.length} total`}</span></div>
-            {categories.map(name => { const count = records.filter(record => record.category === name).length; return <div className="area" key={name}><div><span>{name}</span><strong>{loading || error ? 'Unavailable' : count}</strong></div><div className="bar" aria-hidden="true"><span className={name.toLowerCase()} style={{ width: !loading && !error && records.length ? `${count / records.length * 100}%` : '0%' }} /></div></div>; })}
-          </section><section className="panel next-step"><p className="eyebrow">Next decision</p><h2>Set the assessment foundation</h2><p>Questions, framework mapping and thresholds need agreement before a record can receive a risk result.</p><span className="status">Framework selection pending</span><button className="text-button" onClick={() => navigate('governance')}>View governance decisions</button></section></div>
-          <section className="panel registry-panel"><div className="panel-heading"><div><p className="eyebrow">From your registry</p><h2>Latest registrations</h2></div><button className="text-button" onClick={() => navigate('registry')}>View all records</button></div>{loading ? <p className="loading" role="status">Loading registry...</p> : error ? <p className="loading">Registry could not be loaded.</p> : records.length ? registryTable(records.slice(0, 5)) : emptyState()}</section>
-        </>}
-        {page === 'registry' && <section className="panel registry-panel"><div className="filters"><label>Search records<input type="search" placeholder="Search by name, purpose or owner" value={query} onChange={e => setQuery(e.target.value)} /></label><label htmlFor="registry-category">Category<select aria-label="Category" id="registry-category" value={category} onChange={e => setCategory(e.target.value)}><option>All categories</option>{categories.map(name => <option key={name}>{name}</option>)}</select></label></div><div className="result-count">{loading ? 'Loading records...' : error ? 'Data unavailable' : `${filtered.length} of ${records.length} records`}</div>{!loading && !error && (filtered.length ? registryTable(filtered) : emptyState(records.length > 0))}</section>}
-        {page === 'governance' && <div className="document-grid"><section className="panel prose"><p className="eyebrow">Current state</p><h2>Assessment is not configured</h2><p>Every registered AI use is marked <strong>Not assessed</strong>. This does not mean low risk, approved or compliant.</p><p>The system currently records AI use. It does not calculate scores, recommend governance actions or certify compliance.</p><h3>Decisions needed</h3><ol><li>Select the governance framework and applicable institutional policies.</li><li>Agree assessment questions and their source mapping.</li><li>Approve rules, thresholds and the explanation for each result.</li><li>Define reviewer permissions and approval steps.</li></ol></section><section className="panel prose"><p className="eyebrow">Planned approach</p><h2>Rules people can understand</h2><p>Assessment results will be traceable to responses and approved rules. Rule versions will identify the basis of each result.</p><p>Machine learning is not required. Framework selection remains open; no institutional policy is assumed.</p><h3>Risk and approval are different</h3><p>A future risk result describes the outcome of an assessment. Approval records an authorised institutional decision. Neither is inferred from a registry entry.</p></section></div>}
-        {page === 'guide' && <div className="document-grid"><section className="panel prose"><p className="eyebrow">Available today</p><h2>Review the first working flow</h2><ol><li>Register a fictional AI use with its purpose, owner and data description.</li><li>Find it in the registry using search and category filters.</li><li>Open the record to review or edit its details.</li><li>Return to the overview and check that the totals match.</li><li>Refresh the page to confirm the record is retained.</li></ol><h3>Need example records?</h3><p>Add three clearly fictional examples, one for each area. Repeating this action does not duplicate or overwrite them.</p><button className="secondary" disabled={seeding} onClick={addExamples}>{seeding ? 'Adding examples...' : 'Load fictional examples'}</button></section><section className="panel prose"><p className="eyebrow">Team review</p><h2>Build, record, review</h2><p>Jordon leads the initial work. Avnish, Ashvin and Noorpreet will review the foundation before subsequent allocation.</p><p>Capture findings, decisions and actual contributions against the relevant ticket. Proposed ownership is not a record of completed work.</p><h3>Still to come</h3><p>Authentication, role permissions, assessments, actions, document handling, reminders, reporting and Shadow AI self-reporting remain future work.</p><p>Setup instructions, design decisions and verification evidence are maintained in the repository documentation.</p></section></div>}
-        <footer className="page-footer"><span>AITrace</span><span>AI Governance Compliance Tracker 2026-S2R-04</span></footer>
-      </main>
-    </div>
-    <dialog ref={detailDialog} aria-labelledby="detail-title" onClose={() => setViewing(null)}>
-      {viewing && <><div className="dialog-heading"><div><p className="eyebrow">AI registry</p><h2 id="detail-title">{viewing.name}</h2></div><button autoFocus className="text-button" onClick={() => detailDialog.current.close()}>Close</button></div>
-        <dl className="record-details">{[['Responsible person or team', viewing.owner], ['Category', viewing.category], ['Purpose', viewing.purpose], ['Data used', viewing.dataDescription], ['Assessment status', 'Not assessed'], ['Created', formatDate(viewing.createdAt)], ['Updated', formatDate(viewing.updatedAt)]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-        <p className="form-help">Registration does not approve this AI use or establish compliance.</p>
-        <div className="dialog-actions"><button className="primary" onClick={() => { detailDialog.current.close(); openForm(viewing); }}>Edit record</button></div></>}
-    </dialog>
-    <dialog ref={dialog} aria-labelledby="record-title" onCancel={event => { if (saving) event.preventDefault(); }}>
-      <form onSubmit={save}><div className="dialog-heading"><div><p className="eyebrow">AI registry</p><h2 id="record-title">{editing ? 'Edit AI use' : 'Register AI use'}</h2></div><button type="button" className="text-button" disabled={saving} onClick={() => dialog.current.close()}>Close</button></div>
-        <p className="form-help">Use fictional information. Describe the data involved without entering personal or sensitive records.</p>
-        {formError && <p className="error" role="alert">{formError}</p>}
-        {[
-          ['name', 'AI tool or use case', 120, false], ['owner', 'Responsible person or team', 120, false]
-        ].map(([key, label, max]) => <label className="field" key={key}>{label}<input required maxLength={max} value={form[key]} ref={key === 'name' ? nameInput : undefined} aria-invalid={!!fieldErrors[key]} aria-describedby={fieldErrors[key] ? `${key}-error` : undefined} onChange={e => setForm({ ...form, [key]: e.target.value })} />{fieldErrors[key] && <span id={`${key}-error`} className="field-error">{fieldErrors[key]}</span>}</label>)}
-        <label className="field" htmlFor="record-category">Category<select aria-label="Category" id="record-category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>{categories.map(name => <option key={name}>{name}</option>)}</select></label>
-        {[['purpose', 'Purpose of this AI use', 2000], ['dataDescription', 'Data used', 1000]].map(([key, label, max]) => <label className="field" key={key}>{label}<textarea rows="3" required maxLength={max} value={form[key]} aria-invalid={!!fieldErrors[key]} aria-describedby={fieldErrors[key] ? `${key}-error` : undefined} onChange={e => setForm({ ...form, [key]: e.target.value })} />{fieldErrors[key] && <span id={`${key}-error`} className="field-error">{fieldErrors[key]}</span>}</label>)}
-        <p className="form-help">Assessment status: Not assessed. Saving a record does not approve its use.</p><div className="dialog-actions"><button type="button" className="secondary" disabled={saving} onClick={() => dialog.current.close()}>Cancel</button><button className="primary" disabled={saving}>{saving ? 'Saving...' : editing ? 'Save changes' : 'Save registration'}</button></div>
-      </form>
-    </dialog>
-  </div>;
+  const visible=accounts.filter(account=>`${account.displayName} ${account.login} ${account.role}`.toLowerCase().includes(query.toLowerCase()));
+  return <><p className="eyebrow">Organisation administration</p><h1>Accounts</h1><p className="subtitle">Manage accounts, passwords, and access for your organisation.</p>
+    {error&&<p className="error" role="alert">{error}</p>}{notice&&<p className="notice" role="status">{notice}</p>}
+    <section className="panel"><div className="section-heading"><div><h2>Account directory</h2><p className="form-note">{accounts.length} accounts in your organisation</p></div><div className="directory-search"><Field>Search accounts<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Name, login, or role"/></Field></div></div>
+    <div className="table-wrap" role="region" aria-label="Account directory" tabIndex="0"><table><thead><tr><th>Name</th><th>Login</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visible.map(account=><tr key={account.id}><td>{account.displayName}{account.id===principal.accountId&&<small>Your account</small>}</td><td>{account.login}</td><td>{account.role.replaceAll('_',' ')}</td><td><span className={`status ${account.status==='active'?'status-success':''}`}>{account.status}</span></td><td><button disabled={busy} aria-label={`Manage ${account.login}`} onClick={()=>{setSelected(account);setError('');setNotice('')}}>Manage</button></td></tr>)}</tbody></table>{!visible.length&&<p className="empty">No accounts match your search.</p>}</div></section>
+    {selected&&<section className="panel" key={selected.id}><div className="section-heading"><div><p className="eyebrow">Manage account</p><h2>{selected.displayName}</h2><p className="form-note">{selected.login}</p></div><button disabled={busy} onClick={()=>setSelected(null)}>Close account controls</button></div>
+      <div className="admin-grid"><section><h3>Reset password</h3><p className="form-note">This signs the account out on all devices. Share the new password securely.</p><form onSubmit={e=>update(e,'password')} className="admin-form"><FormNote/><Field>New password<input name="password" type="password" minLength="12" maxLength="200" autoComplete="new-password" required/></Field><Field>Confirm new password<input name="confirmPassword" type="password" minLength="12" maxLength="200" autoComplete="new-password" required/></Field><button className="primary" disabled={busy}>{busy?'Saving...':'Reset password'}</button></form></section>
+      <section><h3>Role and access</h3><p className="form-note">Disabled accounts cannot sign in. Access changes end existing sessions.</p><form onSubmit={e=>update(e,'access')} className="admin-form"><FormNote/><Field>Account role<select name="role" defaultValue={selected.role} required disabled={selected.id===principal.accountId}><option value="staff_user">Staff User</option><option value="compliance_officer">Compliance Officer</option><option value="administrator">Administrator</option></select></Field><Field>Account status<select name="status" defaultValue={selected.status} required disabled={selected.id===principal.accountId}><option value="active">Active</option><option value="disabled">Disabled</option></select></Field>{selected.id===principal.accountId?<p className="form-note">You cannot remove your own administrator access.</p>:<button className="primary" disabled={busy}>{busy?'Saving...':'Save access'}</button>}</form></section></div>
+    </section>}
+    <section className="panel"><h2>Account activity</h2>{audit.length?audit.map(e=><p className="history-entry" key={e.id}>{e.created_at} - {e.actor}: {e.action} for {e.target}</p>):<p>No account changes recorded.</p>}</section><section className="panel"><h2>Create account</h2><form onSubmit={create} className="record-form"><FormNote/><Field>Login<input name="login" required maxLength="160" autoComplete="off"/></Field><Field>Display name<input name="displayName" required maxLength="120"/></Field><Field>Role<select name="role" required><option value="staff_user">Staff User</option><option value="compliance_officer">Compliance Officer</option><option value="administrator">Administrator</option></select></Field><Field>Initial password<input name="password" type="password" required minLength="12" maxLength="200" autoComplete="new-password"/></Field><button className="primary" disabled={busy}>{busy?'Saving...':'Create account'}</button></form></section>
+  </>;
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+function SettingsPage({appearance,onAppearance}) {
+  const [choice,setChoice]=useState(appearance),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+  useEffect(()=>setChoice(appearance),[appearance]);
+  async function save(event){event.preventDefault();setBusy(true);setError('');setNotice('');try{const settings=await api('/settings',json('PUT',{appearance:choice}));onAppearance(settings.appearance);setNotice('Appearance saved for your organisation.');}catch(e){setError(e.message)}finally{setBusy(false)}}
+  return <><p className="eyebrow">Organisation administration</p><h1>Appearance</h1><p className="subtitle">Choose a consistent style for everyone in your organisation. Each person can still switch between light and dark mode.</p><section className="panel"><h2>Workspace style</h2>{error&&<p className="error" role="alert">{error}</p>}{notice&&<p className="notice" role="status">{notice}</p>}<form onSubmit={save}><fieldset className="style-options"><legend>Choose a style</legend>{[{id:'srec',name:'SREC blue',description:'Inspired by the sponsor institution: blue, deep navy, and white.'},{id:'slate',name:'Slate',description:'A neutral graphite workspace with understated blue accents.'}].map(style=><label className="style-option" key={style.id}><input type="radio" name="appearance" value={style.id} checked={choice===style.id} onChange={()=>setChoice(style.id)}/><span className={`style-swatch swatch-${style.id}`} aria-hidden="true"/><strong>{style.name}</strong><span>{style.description}</span></label>)}</fieldset><button className="primary" disabled={busy}>{busy?'Saving...':'Save appearance'}</button></form></section></>;
+}
+
+function App(){
+  const [shadowFields,setShadowFields]=useState({}),[shadowBusy,setShadowBusy]=useState(false);
+  const [theme,setTheme]=useState(()=>{try{return localStorage.getItem('aitrace-theme')==='dark'?'dark':'light'}catch{return'light'}});
+  const [appearance,setAppearance]=useState('srec');
+  useEffect(()=>{document.documentElement.dataset.appearance=appearance},[appearance]);
+  const [principal,setPrincipal]=useState(undefined),[page,setPage]=useState('overview'),[records,setRecords]=useState([]),[overview,setOverview]=useState(null),[error,setError]=useState('');
+  useEffect(()=>{document.documentElement.dataset.theme=theme;try{localStorage.setItem('aitrace-theme',theme)}catch{}},[theme]);
+  useEffect(()=>{api('/auth/session').then(x=>setPrincipal(x.principal)).catch(()=>setPrincipal(null))},[]);
+  const can=permission=>principal?.permissions.includes(permission);
+  async function load(){try{const [registry,dashboard,settings]=await Promise.all([api('/registry'),api('/dashboard'),api('/settings')]);setAppearance(settings.appearance);setRecords(registry.records);setOverview({total:dashboard.registry.total,unassessed:dashboard.registry.notAssessed,byBusinessArea:dashboard.registry.byCategory,actions:dashboard.actions,risk:dashboard.risk,policies:dashboard.policies});setError('');}catch(e){if(e.message==='Authentication is required.')setPrincipal(null);else setError(e.message);}}
+  useEffect(()=>{if(principal)load()},[principal]);
+  async function logout(){await api('/auth/logout',json('POST',{}));setPrincipal(null);setPage('overview');setAppearance('srec');setRecords([]);setOverview(null);setError('');}
+  async function shadow(event){event.preventDefault();setError('');setShadowFields({});setShadowBusy(true);const element=event.currentTarget,body=Object.fromEntries(new FormData(element));try{await api('/shadow-reports',json('POST',body));element.reset();await load();setPage('registry');}catch(e){setError(e.message);setShadowFields(e.fields||{});}finally{setShadowBusy(false)}}
+  if(principal===undefined)return <main className="content"><p>Loading...</p></main>;
+  if(!principal)return <><header className="topbar"><Brand/><button aria-pressed={theme==='dark'} onClick={()=>setTheme(theme==='dark'?'light':'dark')}>{theme==='dark'?'Light':'Dark'} theme</button></header><Login onLogin={setPrincipal}/></>;
+  if(principal.mustChangePassword)return <><header className="topbar"><Brand/><button onClick={logout}>Sign out</button></header><main className="content"><SecurityPage principal={principal} onChanged={()=>{setPrincipal(null);setPage('overview')}}/></main></>;
+  return <div className="app-shell"><a className="skip-link" href="#main-content">Skip to content</a><aside className="sidebar"><Brand/><p className="workspace-label">WORKSPACE</p><p className="organisation-name">{principal.organizationName}</p><nav aria-label="Main navigation">{['overview','registry','assessments','actions','policies','notifications','report','guide','security',...(can('account:manage')?['accounts','settings','certificates']:[])].map(item=><button key={item} aria-current={page===item?'page':undefined} onClick={()=>setPage(item)}>{item==='security'?'My password':item==='settings'?'Appearance':item==='report'?'Disclose AI use':item[0].toUpperCase()+item.slice(1)}</button>)}</nav><div className="sidebar-footer"><span className="sidebar-tag">SME GOVERNANCE</span><p>Responsible AI starts<br/>with visibility.</p></div></aside>
+    <div className="workspace"><header className="topbar"><div><strong>{principal.displayName}</strong><span className="role-label">{principal.roleLabel}</span></div><div><button aria-pressed={theme==='dark'} onClick={()=>setTheme(theme==='dark'?'light':'dark')}>{theme==='dark'?'Light':'Dark'} theme</button><button onClick={logout}>Sign out</button></div></header>
+    <main id="main-content" tabIndex="-1" className="content">{error&&<p className="error" role="alert">{error}</p>}
+      {page==='overview'&&<><p className="eyebrow">Organisation governance overview</p><h1>AI use at a glance</h1><p className="subtitle">A clearer view of the tools, responsibilities, and next steps across your organisation.</p><div className="stat-grid"><article className="stat-card"><span>Recorded uses</span><strong>{overview?.total??0}</strong></article><article className="stat-card"><span>Not assessed</span><strong>{overview?.unassessed??0}</strong></article>{overview?.actions?.status==="available"&&<article className="stat-card"><span>Outstanding actions</span><strong>{overview.actions.outstanding}</strong><small>{overview.actions.overdue} overdue</small></article>}</div><section className="panel"><h2>Governance follow-up</h2><p className="form-note">Risk results use demonstration rules and do not certify compliance.</p><div className="actions"><button onClick={()=>setPage('assessments')}>View assessments</button><button onClick={()=>setPage('actions')}>View actions</button><button onClick={()=>setPage('policies')}>View policies</button><button onClick={()=>setPage('notifications')}>View notifications</button></div>{overview?.risk?.status==='available'&&<div className="risk-summary">{overview.risk.byOutcome.map(r=><span className={`status risk-${r.id}`} key={r.id}>{r.label}: {r.count}</span>)}{!overview.risk.total&&<p>No completed assessments yet.</p>}</div>}{overview?.policies?.status==='available'&&<p className="form-note">{overview.policies.total} current policies; {overview.policies.overdue||0} overdue reviews.</p>}</section><div className="overview-grid"><section className="panel"><p className="eyebrow">Across your organisation</p><h2>AI use by business area</h2>{Object.entries(overview?.byBusinessArea||{}).map(([area,count])=><div className="area" key={area}><div><span>{area}</span><strong>{count} {count===1?'use':'uses'}</strong></div><div className="bar"><span style={{width:`${count / Math.max(overview.total,1) * 100}%`}}/></div></div>)}{!records.length&&<div className="empty"><h3>Your overview starts here</h3><p>Add your first AI use to see which parts of your business are using AI.</p></div>}</section><section className="panel next-step"><p className="eyebrow">Your next step</p><h2>Make AI use visible</h2><p>A useful register starts with the basics: the tool, the person responsible, and the data it handles.</p><button className="primary" onClick={()=>setPage('registry')}>Open the registry</button><button className="text-button" onClick={()=>setPage('guide')}>Read the getting started guide</button></section></div></>}
+      {page==='certificates'&&can('account:manage')&&<CertificatesPage/>}
+      {page==='registry'&&<RegistryPage principal={principal} records={records} onChanged={load}/>}
+      {page==='report'&&<><p className="eyebrow">Shadow AI self-reporting</p><h1>Disclose an AI tool</h1><p className="subtitle">Tell your organisation about an AI tool that is not yet formally registered. This does not automatically approve the tool.</p><section className="panel"><form onSubmit={shadow} className="record-form"><FormNote/>
+        <Field error={shadowFields.name}>AI tool or use case<input name="name" required maxLength="120"/></Field><Field error={shadowFields.businessArea}>Business area<input name="businessArea" required maxLength="120"/></Field><Field error={shadowFields.purpose}>Purpose<textarea name="purpose" required maxLength="2000"/></Field><Field error={shadowFields.dataDescription}>Data handled<textarea name="dataDescription" required maxLength="1000"/></Field><Field error={shadowFields.dataSensitivity}>Data sensitivity<select name="dataSensitivity" required><option>Not classified</option><option>Public</option><option>Internal</option><option>Confidential</option><option>Sensitive</option></select></Field><button className="primary" disabled={shadowBusy}>Submit disclosure</button>
+      </form></section></>}
+      {page==='security'&&<SecurityPage principal={principal} onChanged={()=>{setPrincipal(null);setPage('overview')}}/>}
+      {page==='notifications'&&<NotificationsPage principal={principal}/>}
+      {page==='policies'&&<PoliciesPage principal={principal}/>}
+      {page==='actions'&&<ActionsPage principal={principal} records={records} onChanged={load}/>}
+      {page==='assessments'&&<AssessmentsPage principal={principal} records={records} onChanged={load}/>}
+      {page==='accounts'&&<AccountsPage principal={principal} onSessionEnded={()=>{setPrincipal(null);setPage('overview')}}/>}
+      {page==='settings'&&can('account:manage')&&<SettingsPage appearance={appearance} onAppearance={setAppearance}/>}
+      {page==='guide'&&<><p className="eyebrow">Prototype guidance</p><h1>How AITrace works</h1><p className="subtitle">A practical starting point for responsible AI use in your business.</p><section className="panel prose"><h2>A simple governance workflow</h2><ol><li><strong>Record the tools you use.</strong> Capture the purpose, owner, and business area.</li><li><strong>Understand the data.</strong> Describe what information each tool handles.</li><li><strong>Review and follow up.</strong> Check approval status and export a summary for your team.</li></ol><p>Register or disclose AI uses, document their purpose and data sensitivity, complete an approved governance assessment, track resulting actions, and export an organisation summary.</p><p>AITrace supports self-assessment. It does not provide legal advice, certification or automatic compliance approval.</p><p>Use fictional or appropriately de-identified information during development and demonstration.</p></section></>}
+    </main></div></div>;
+}
+createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);

@@ -135,3 +135,25 @@ Issue #19 now has a pure dashboard snapshot builder. It filters records by an au
 The domain foundations now share one validation utility. The audit also tightened risk-definition dates and typed rule operands, rejects malformed or conflicting action definitions without throwing, validates current governance-action state, treats whitespace-only updates as no-ops, requires advancing timestamps for material updates, and validates dashboard data only after authorised-scope filtering. The local API origin policy now requires the exact current HTTP origin, including its port.
 
 Verification passed with 44 Node tests, 7 Playwright tests, a production build, zero npm audit vulnerabilities and a clean Git diff check. Authentication, approved governance content, evidence storage and reminder delivery channels remain decision-gated.
+
+
+## Capstone requirements alignment 25 September 2026
+
+The capstone requirements are now the product baseline. The interface uses SME and organisation language, the registry records a free-text business area, structured data sensitivity and approval status, and the database scopes records to an organisation. The required role labels are Administrator, Compliance Officer and Staff User.
+
+Administrators can register organisation accounts for the three capstone roles. Organisation accounts use salted scrypt password hashes. Opaque session tokens are stored only as SHA-256 hashes and sent in host-only HttpOnly SameSite Strict cookies. Protected API routes deny anonymous requests and enforce action permissions. Tests cover generic login failures, logout revocation, role denial and horizontal isolation between two fictional organisations. Local HTTP remains restricted to loopback; production TLS remains a deployment requirement.
+
+Shadow AI self-reporting now creates an unapproved disclosure in the organisation registry without automated discovery. Administrators and Compliance Officers can export organisation-scoped CSV and paginated PDF compliance summaries. These exports state recorded facts and do not claim certification.
+
+The questionnaire, approved scoring definitions, persisted risk results, evidence storage, action persistence and reminder delivery still require integration. The pure modules remain available and tested, but governance content is not invented. See `capstone-requirements-traceability.md` for the ticket mapping and remaining evidence.
+
+
+## 26 September 2026: ordered capstone workflow delivery
+
+The audit backlog was implemented in sequenced commits with GitHub evidence comments. See [delivery record](capstone-delivery-2026-09-26.md), [current traceability](capstone-requirements-traceability.md), [user guide](user-guide.md) and [acceptance checklist](acceptance-checklist.md). Earlier entries are historical checkpoints and do not describe the current feature set. Sponsor content/acceptance, real encrypted-storage/TLS evidence and human UAT remain open.
+
+## 27 September 2026 — Administrator certificates
+
+Added organisation-scoped certificate staging, temporary 30-day self-signed generation, matching PEM replacement validation, expiry/fingerprint metadata and explicit restart-based server activation. Secret bundles remain outside Git. The normal local administrator now has a generated staged pair; its Windows directory ACL is restricted to the current account and SYSTEM. HTTP remains active until configuration/restart; no trust-store changes were made.
+
+Verification: 68 application tests and 14 browser tests passed, production build passed, npm audit reported zero vulnerabilities. A test HTTPS connection verified the generated certificate using an explicit test CA. The new page is included in automated accessibility checks across both palettes and light/dark modes. A browser test's required-field label locator was corrected before the final passing run.

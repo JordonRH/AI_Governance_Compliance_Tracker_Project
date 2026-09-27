@@ -7,7 +7,12 @@ AITrace documentation follows a simple folder cadence so working guidance and or
 - [Architecture](project/architecture.md): application boundaries, structure, API and design decisions.
 - [Local development](project/development.md): setup, commands, data handling and troubleshooting.
 - [Development progress](project/progress.md): delivered work, verification and contribution record.
+- [Capstone requirements traceability](project/capstone-requirements-traceability.md): source requirements mapped to tickets, evidence, gaps and next work.
 - [Proposal issue register](project/proposal-issue-register.md): mapping between proposal WBS activities and GitHub issues.
+
+- [User guide](project/user-guide.md): complete role-based demonstration workflow.
+- [Acceptance checklist](project/acceptance-checklist.md): human review steps and remaining evidence.
+- [Security configuration](project/security-configuration.md): password/TLS settings and storage-encryption plan.
 
 ## Source materials
 
@@ -49,3 +54,5 @@ Research documents are review inputs. They do not establish sponsor policy, lega
 - `data/`: ignored local SQLite data.
 - `test-results/`: ignored generated browser-test evidence; disposable Playwright output stays in `test-results/playwright/` so retained review screenshots do not conflict with runner cleanup.
 - Root: application entry points, package metadata and tool configuration only.
+
+- [GitHub/repository reconciliation, 27 September 2026](project/github-reconciliation-2026-09-27.md)

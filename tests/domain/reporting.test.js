@@ -1,0 +1,6 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {createComplianceCsv,createCompliancePdf} from '../../server/reporting.js';
+const records=Array.from({length:95},(_,index)=>({name:`AI use ${index}`,purpose:'Long purpose '.repeat(30),owner:'Fictional',businessArea:'Operations',dataSensitivity:'Public',approvalStatus:'Not reviewed',assessmentStatus:'Not assessed',source:'registry',updatedAt:'2026-09-25T00:00:00.000Z'}));
+test('CSV escapes quotes, neutralises formulas and includes governance evidence',()=>{const csv=createComplianceCsv([{...records[0],name:'=1+1'}],{actions:[{title:'Review',owner:'Alex',status:'Complete'}],policies:[{title:'Policy',version:2}]});assert.ok(csv.includes("'=1+1"));assert.ok(csv.includes('"Action"'));assert.ok(csv.includes('"Policy"'));assert.ok(createComplianceCsv([{name:'Tool, "quoted"'}]).includes('"Tool, ""quoted"""'));});
+test('PDF embeds a Unicode font and paginates long records',async()=>{const pdf=await createCompliancePdf(records,'Fictional Caf\u00e9','2026-09-25T00:00:00.000Z');const raw=pdf.toString('latin1');assert.ok(raw.startsWith('%PDF-'));assert.match(raw,/\/ToUnicode/);assert.ok(Number(raw.match(/\/Count (\d+)/)?.[1])>3);});

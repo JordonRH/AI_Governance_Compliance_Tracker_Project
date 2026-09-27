@@ -9,7 +9,7 @@ export default defineConfig({
   workers: 1,
   use: { baseURL: 'http://127.0.0.1:5174', browserName: 'chromium', trace: 'retain-on-failure' },
   webServer: {
-    command: 'node server/index.js', url: 'http://127.0.0.1:5174/api/health', reuseExistingServer: false,
-    env: { PORT: '5174', DATABASE_PATH: join(tmpdir(), `aitrace-e2e-${randomUUID()}.sqlite`) }
+    command: 'node server/e2e-server.js', url: 'http://127.0.0.1:5174/api/health', reuseExistingServer: false,
+    env: { AITRACE_CERTIFICATES_DIR:join(tmpdir(), `aitrace-certs-${randomUUID()}`), PORT: '5174', DATABASE_PATH: join(tmpdir(), `aitrace-e2e-${randomUUID()}.sqlite`)}
   }
 });
