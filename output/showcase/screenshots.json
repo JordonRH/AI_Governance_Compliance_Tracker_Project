@@ -1,0 +1,423 @@
+{
+  "capturedAt": "2026-09-27T10:36:19.131Z",
+  "dataset": "Fictional Cedar SME showcase; no live user data",
+  "viewport": "1440 x 960 desktop; 390 x 844 mobile",
+  "screens": [
+    {
+      "id": "01-sign-in",
+      "title": "Sign in",
+      "role": "Public",
+      "note": "",
+      "file": "screenshots/01-sign-in.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": null
+    },
+    {
+      "id": "02-overview",
+      "title": "Governance overview",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/02-overview.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "03-registry",
+      "title": "AI use registry",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/03-registry.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "04-register-ai-use",
+      "title": "Register an AI use",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/04-register-ai-use.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "05-registry-details",
+      "title": "AI use details and history",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/05-registry-details.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "06-edit-ai-use",
+      "title": "Edit an AI use",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/06-edit-ai-use.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "07-assessment-history",
+      "title": "Assessment history",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/07-assessment-history.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "08-assessment-draft",
+      "title": "Governance assessment draft",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/08-assessment-draft.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "09-assessment-result",
+      "title": "Explainable assessment result",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/09-assessment-result.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "10-actions",
+      "title": "Action register and assignment",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/10-actions.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "11-action-edit-history",
+      "title": "Action progress and history",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/11-action-edit-history.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "12-policies",
+      "title": "Policy library and versions",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/12-policies.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "13-policy-review",
+      "title": "Schedule the next policy review",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/13-policy-review.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "14-notifications",
+      "title": "Reminder settings and inbox",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/14-notifications.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "15-disclosure",
+      "title": "Voluntary AI use disclosure",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/15-disclosure.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "16-guide",
+      "title": "Getting started guide",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/16-guide.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "17-accounts",
+      "title": "Account directory and administration",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/17-accounts.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "18-account-controls",
+      "title": "Administrator password and access controls",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/18-account-controls.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "19-create-account",
+      "title": "Create an account",
+      "role": "Administrator",
+      "note": "Full-page original starts at the page top; PDF excerpts show focused panels.",
+      "file": "screenshots/19-create-account.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "20-appearance",
+      "title": "Organisation appearance settings",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/20-appearance.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "21-certificates",
+      "title": "Temporary certificates and replacement",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/21-certificates.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "22-change-password",
+      "title": "Change your password",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/22-change-password.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "23-dark-theme",
+      "title": "Overview in dark mode",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/23-dark-theme.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "24-slate-style",
+      "title": "Overview in Slate style",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/24-slate-style.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "25-mobile-overview",
+      "title": "Mobile overview",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/25-mobile-overview.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "26-mobile-registry",
+      "title": "Mobile registry",
+      "role": "Administrator",
+      "note": "",
+      "file": "screenshots/26-mobile-registry.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "27-staff-overview",
+      "title": "Staff overview",
+      "role": "Staff User",
+      "note": "",
+      "file": "screenshots/27-staff-overview.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "28-staff-actions",
+      "title": "Assigned staff actions",
+      "role": "Staff User",
+      "note": "",
+      "file": "screenshots/28-staff-actions.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "29-staff-policies",
+      "title": "Staff policy access",
+      "role": "Staff User",
+      "note": "",
+      "file": "screenshots/29-staff-policies.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "30-staff-inbox",
+      "title": "Personal staff inbox",
+      "role": "Staff User",
+      "note": "",
+      "file": "screenshots/30-staff-inbox.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "31-compliance-officer",
+      "title": "Compliance Officer workspace",
+      "role": "Compliance Officer",
+      "note": "",
+      "file": "screenshots/31-compliance-officer.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": 0
+    },
+    {
+      "id": "32-required-password-change",
+      "title": "Required password change after reset",
+      "role": "Staff User",
+      "note": "",
+      "file": "screenshots/32-required-password-change.png",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "scrollY": 0,
+      "sidebarTop": null
+    }
+  ]
+}
