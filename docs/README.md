@@ -1,58 +1,73 @@
 # Documentation index
 
-AITrace documentation follows a simple folder cadence so working guidance and original project inputs remain distinct.
+Start with the current runbooks below. They describe the checked-in application and require no AI assistant, private helper scripts or personal development environment.
 
-## Project documentation
+## Current instructions
 
-- [Architecture](project/architecture.md): application boundaries, structure, API and design decisions.
-- [Local development](project/development.md): setup, commands, data handling and troubleshooting.
-- [Development progress](project/progress.md): delivered work, verification and contribution record.
-- [Capstone requirements traceability](project/capstone-requirements-traceability.md): source requirements mapped to tickets, evidence, gaps and next work.
-- [Proposal issue register](project/proposal-issue-register.md): mapping between proposal WBS activities and GitHub issues.
+| Document | Use it for |
+| --- | --- |
+| [Development](project/development.md) | Fresh clone, first Administrator, all npm commands, configuration, tests and troubleshooting |
+| [User guide](project/user-guide.md) | Every workspace screen, role permissions and fictional-data demonstration |
+| [Operations](project/operations.md) | Start/stop, HTTPS activation/replacement, backups/restores, recovery and upgrades |
+| [Contributor workflow](project/contributing.md) | Change code, verify, commit, push and open a GitHub PR without AI/CLI integrations |
+| [API reference](project/api-reference.md) | Endpoints, payloads, permissions and a PowerShell session example |
+| [Architecture](project/architecture.md) | Runtime modules, persisted workflow and boundaries |
+| [Security configuration](project/security-configuration.md) | Implemented safeguards and unverified deployment requirements |
+| [Requirements traceability](project/capstone-requirements-traceability.md) | Capstone requirements, implementation evidence and remaining acceptance |
+| [Acceptance checklist](project/acceptance-checklist.md) | Actual human/team/sponsor review and outcome recording |
 
-- [User guide](project/user-guide.md): complete role-based demonstration workflow.
-- [Acceptance checklist](project/acceptance-checklist.md): human review steps and remaining evidence.
-- [Security configuration](project/security-configuration.md): password/TLS settings and storage-encryption plan.
+## Dated evidence and planning
+
+These are snapshots; follow current runbooks for commands and GitHub for live issue state.
+
+- [Documentation verification](project/documentation-verification-2026-09-27.md): fresh-checkout command checks and their limits.
+- [GitHub reconciliation, 27 September](project/github-reconciliation-2026-09-27.md): per-ticket evidence and disposition at that date.
+- [Ordered capstone delivery, 26 September](project/capstone-delivery-2026-09-26.md): implementation batches, commit references and evidence boundaries.
+- [Functional audit, 26 September](project/capstone-functional-audit-2026-09-26.md): original findings; later delivery supersedes its implementation status.
+- [Progress log](project/progress.md): chronological development/contribution record; earlier entries describe earlier code.
+- [Proposal issue register](project/proposal-issue-register.md): historical WBS-to-GitHub mapping and planning discrepancies.
 
 ## Source materials
 
-The `source-materials/` folder preserves the original university and project planning files. File contents are unchanged; filenames use lowercase kebab-case for consistent repository navigation.
+Original university/project inputs remain unchanged in `source-materials/`. Do not edit them to record implementation progress.
 
-- `ai-governance-compliance-tracker-capstone.docx`
-- `ai-governance-compliance-tracker-project-proposal-and-plan.docx`
-- `google-drive-structure-and-workflow.docx`
-- `project-ticket-register.xlsx`
+- [Capstone requirements](source-materials/ai-governance-compliance-tracker-capstone.docx)
+- [Project proposal and plan](source-materials/ai-governance-compliance-tracker-project-proposal-and-plan.docx)
+- [Drive structure and workflow](source-materials/google-drive-structure-and-workflow.docx)
+- [Original ticket register](source-materials/project-ticket-register.xlsx)
 
-Do not edit source materials to record implementation progress. Put current technical guidance and evidence in `project/`, and retain contribution and AI-use records accurately.
+Open Word documents in Word/LibreOffice and the spreadsheet in Excel/LibreOffice. These source artifacts are not inputs that the running app loads.
 
-## Research
+## Research and earlier design
 
-- [Background and literature review](research/background-and-literature-review.md): focused higher-education AI governance baseline, findings and limitations.
-- [Candidate governance framework map](research/governance-framework-candidate-map.md): topic-level comparison and decisions required before assessment design.
+[Background/literature review](research/background-and-literature-review.md) and [candidate framework map](research/governance-framework-candidate-map.md) preserve proposal-era higher-education research. The implemented product baseline is SME-focused. These are review inputs, not approved questions, rules, policy or the completed research paper.
 
-Research documents are review inputs. They do not establish sponsor policy, legal compliance, assessment questions or scoring thresholds.
+Earlier designs retain their proposed contracts and unresolved decisions at the time they were written. Each has a current implementation note; current architecture, API reference and executable tests take precedence for operating/extending the app.
 
-## Design
+- [Risk scoring](design/risk-scoring-module.md)
+- [Authentication/authorisation](design/authentication-and-authorization.md)
+- [Assessment lifecycle](design/governance-assessment-module.md)
+- [Policy/evidence intake](design/policy-and-evidence-handling.md)
+- [Action lifecycle](design/governance-action-tracking.md)
+- [Reminder planning](design/reminder-planning.md)
+- [Dashboard aggregation](design/dashboard-summary.md)
 
-- [Explainable risk-scoring module](design/risk-scoring-module.md): proposed module seam, contracts, invariants, persistence boundaries and test strategy without unapproved rule content.
-- [Authentication and authorisation](design/authentication-and-authorization.md): proposed request identity seam, deny-by-default permissions, server-side sessions and implementation decisions.
-- [Governance assessment module](design/governance-assessment-module.md): proposed questionnaire lifecycle, immutable submission, validation and scoring handoff without unapproved question content.
-- [Policy and evidence handling](design/policy-and-evidence-handling.md): implemented intake-validation seam and unresolved storage, retrieval and permission decisions.
-- [Governance action tracking](design/governance-action-tracking.md): implemented action lifecycle/history seam and unresolved persistence and permission decisions.
-- [Reminder planning](design/reminder-planning.md): implemented channel-neutral timing/idempotency seam and unresolved scheduling and delivery decisions.
-- [Scoped dashboard summary](design/dashboard-summary.md): implemented scope-first aggregation and unresolved role/API/UI decisions.
+## Folder purposes
 
-## Repository cadence
+| Folder/file | Purpose |
+| --- | --- |
+| src/ | Browser React components/styles; built by Vite |
+| server/ | Node startup, Express APIs, SQLite and workflow services |
+| server/domain/ | Imported pure domain modules, not separate processes |
+| tests/api/, tests/config/, tests/domain/ | Node test suites, run by npm test |
+| tests/e2e/ | Playwright browser suites, run by npm run test:e2e |
+| docs/project/ | Current runbooks plus explicitly dated project records |
+| docs/design/, docs/research/ | Design history and candidate research |
+| docs/source-materials/ | Preserved original documents |
+| data/ | Ignored local SQLite/certificate/backup files; never supplied by Git |
+| dist/, node_modules/ | Generated build/dependencies; never supplied by Git |
+| test-results/, playwright-report/ | Ignored generated verification output; not required operator tooling |
+| .env.example | Tracked configuration reference; .env is ignored and must be explicitly loaded |
+| package.json, package-lock.json | Supported commands and reproducible dependency versions |
 
-- `src/`: React application source.
-- `server/`: Express API, server startup and SQLite access.
-- `tests/api/`: API and persistence tests.
-- `tests/domain/`: pure domain contract and boundary tests.
-- `tests/e2e/`: Playwright browser tests.
-- `docs/research/`: reviewed research baselines and candidate mappings.
-- `docs/design/`: technical designs that depend on recorded decisions before implementation.
-- `data/`: ignored local SQLite data.
-- `test-results/`: ignored generated browser-test evidence; disposable Playwright output stays in `test-results/playwright/` so retained review screenshots do not conflict with runner cleanup.
-- Root: application entry points, package metadata and tool configuration only.
-
-- [GitHub/repository reconciliation, 27 September 2026](project/github-reconciliation-2026-09-27.md)
+Personal `.agents/` files are ignored; no agent skill/plugin is required to run or maintain AITrace.

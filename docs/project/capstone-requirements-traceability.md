@@ -1,7 +1,7 @@
-﻿# Capstone requirements traceability
+# Capstone requirements traceability
 
 Baseline: `docs/source-materials/ai-governance-compliance-tracker-capstone.docx`
-Reviewed: 26 September 2026 after the ordered audit-improvement batches.
+Reviewed: 27 September 2026 after certificate administration and documentation handover.
 
 Implemented means demonstrated in the local prototype, not sponsor sign-off or production readiness. Source documents are unchanged. Earlier proposal terminology referring to faculties/education/research does not override the SME capstone baseline.
 
@@ -17,12 +17,12 @@ Implemented means demonstrated in the local prototype, not sponsor sign-off or p
 | PDF and CSV reporting | #22 | Registry/assessment/action/policy evidence, formula-safe CSV, wrapped paginated PDF and embedded Latin font; rendered sample QA | Sponsor report acceptance; additional scripts need fonts |
 | Role-based compliance dashboard | #19, #24 | Assessed/unassessed registry totals, demo risk distribution, outstanding/overdue actions, policy reviews and workflow links | Approved risk content and human management/staff usability review |
 | Shadow AI disclosure | #23 | Staff submission, Not reviewed default, retained provenance, pending-review filter and decision history | Sponsor acceptance of triage process |
-| Security | #11, #28 | Scrypt, revoked opaque sessions, live roles, scoped queries, throttling, safe errors, upload limits, optional TLS/Secure cookies | Actual trusted certificate and encrypted-volume/storage verification; independent review |
+| Security | #11, #28 | Scrypt, revoked opaque sessions, live roles, scoped queries, throttling, safe errors, upload limits, optional TLS/Secure cookies, admin temporary certificate staging/replacement | Actual trusted certificate and encrypted-volume/storage verification; independent review |
 | Privacy | #1, #16, #28 | Fictional fixtures, access controls and local-data exclusions | Retention/deletion decisions and privacy review |
 | Responsive plain-language UX | #5, #6, #25 | Shared required fields/errors, desktop/tablet/mobile layout checks and automated accessibility scans in both palettes/modes | Human keyboard/screen-reader/SME UAT |
 | Reliability and tests | #26, #29 | API/domain regression suite plus role/admin/assessment/action/policy/reminder/browser tests | Independent regression/UAT sign-off; automated evidence is not human acceptance |
 | Multi-organisation separation | #7, #11, #19, #28 | Scoped accounts, registry, assessments, actions, policies/files, inbox, settings and reports | Broader multi-tenant deployment remains out of scope |
-| Maintainability and handover | #8, #10, #32, #33 | Current setup, architecture, user guide, security plan and repeatable acceptance checklist | Independent clean-checkout walkthrough and sponsor handover |
+| Maintainability and handover | #8, #10, #32, #33 | Complete setup/command reference, API/operator/contributor runbooks, user guide, architecture/security plan and repeatable acceptance checklist | Independent clean-checkout walkthrough and sponsor handover |
 | Demo-scale performance | #19, #22, #26 | 500-record registry/CSV regression threshold and paginated PDF generation tests | Sponsor-agreed thresholds for full representative datasets |
 | Sponsor feedback/demo | #20, #21, #27, #33 | Reviewable integrated local prototype and scripted acceptance walkthrough | Actual sponsor demonstration, feedback and sign-off |
 
@@ -38,3 +38,5 @@ Implemented means demonstrated in the local prototype, not sponsor sign-off or p
 - Research paper, student reflections, actual contribution records and human acceptance remain separate deliverables.
 
 See [user guide](user-guide.md), [acceptance checklist](acceptance-checklist.md), [security configuration](security-configuration.md), and [delivery record](capstone-delivery-2026-09-26.md).
+
+A fresh-checkout documentation verification is recorded in [27 September evidence](documentation-verification-2026-09-27.md). Agent-run checks do not count as an independent human walkthrough. Dated ticket counts and earlier snapshots are preserved as history.

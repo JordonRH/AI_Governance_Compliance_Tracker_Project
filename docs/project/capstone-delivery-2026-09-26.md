@@ -1,4 +1,4 @@
-﻿# Ordered capstone delivery record
+# Ordered capstone delivery record
 
 Date: 26 September 2026. User direction: implement the audit improvements in order, update their tickets, and commit each completed batch. Work performed by the coding assistant under Jordon's direction; no teammate contribution, sponsor approval or human UAT is inferred.
 
