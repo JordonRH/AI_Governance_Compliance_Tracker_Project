@@ -1,8 +1,16 @@
 # Scoped dashboard summary design
 
-Status: Partial implementation for GitHub issue #19
+## Current implementation note - 27 September 2026
+
+Scope-first aggregation is integrated with authenticated organisation/role checks, persisted assessments/actions/policies and the dashboard UI. Domain `institutionIds`/`categories` names are mapped to current organisation/business-area concepts at the API boundary; the product baseline is SME-focused.
+
+For current operation and exact routes, use [development](../project/development.md), [architecture](../project/architecture.md) and [API reference](../project/api-reference.md).
+
+## Preserved design snapshot
+
+Historical status: Partial implementation for GitHub issue #19
 Prepared: 21 September 2026
-Decision state: Policy-neutral scoped aggregation implemented; authenticated role mapping and UI integration remain unapproved.
+Historical decision state: Policy-neutral scoped aggregation implemented; authenticated role mapping and UI integration remain unapproved.
 
 ## Current boundary
 

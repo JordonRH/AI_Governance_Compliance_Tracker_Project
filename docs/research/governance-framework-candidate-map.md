@@ -1,5 +1,7 @@
 # Candidate AI governance framework map
 
+Current context (27 September 2026): this candidate research preserves the earlier higher-education proposal framing. The running capstone prototype uses an SME baseline; see [requirements traceability](../project/capstone-requirements-traceability.md). This is neither sponsor approval nor the final research paper. Citations retain their original research date and have not been newly revalidated in this documentation-only review.
+
 Status: Topic-level candidate map for team and sponsor review
 Prepared: 20 September 2026
 Scope: Research output for GitHub issue #4; not an assessment questionnaire, scoring model, policy, certification claim or legal opinion.

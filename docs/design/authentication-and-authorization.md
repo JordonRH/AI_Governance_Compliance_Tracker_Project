@@ -1,8 +1,16 @@
 # Authentication and authorisation design
 
-Status: Partial design for GitHub issue #11
+## Current implementation note - 27 September 2026
+
+Local authentication, three roles, session revocation, admin account controls, forced password rotation and throttling are implemented in `server/auth.js` and `server/app.js`. Certificate staging is implemented separately. The pseudocode and proposed decisions below describe the earlier design, not runnable exports.
+
+For current operation and exact routes, use [development](../project/development.md), [architecture](../project/architecture.md) and [API reference](../project/api-reference.md).
+
+## Preserved design snapshot
+
+Historical status: Partial design for GitHub issue #11
 Prepared: 20 September 2026
-Decision state: Security seam and local-prototype mechanism proposed; capstone role labels are confirmed, while permissions and account workflow require implementation decisions.
+Historical decision state: Security seam and local-prototype mechanism proposed; capstone role labels are confirmed, while permissions and account workflow require implementation decisions.
 
 ## Scope
 

@@ -1,8 +1,16 @@
 # Governance assessment module design
 
-Status: Partial design for GitHub issue #14
+## Current implementation note - 27 September 2026
+
+Draft persistence, revision checks, immutable submission and definition snapshots are implemented in `server/assessments.js` and `src/workflows.jsx`. The current questionnaire is synthetic demonstration content; sponsor-approved content is still pending. Proposed interface names below are not exported runtime functions.
+
+For current operation and exact routes, use [development](../project/development.md), [architecture](../project/architecture.md) and [API reference](../project/api-reference.md).
+
+## Preserved design snapshot
+
+Historical status: Partial design for GitHub issue #14
 Prepared: 20 September 2026
-Decision state: Assessment lifecycle and module seam proposed; questionnaire content and permissions are unapproved.
+Historical decision state: Assessment lifecycle and module seam proposed; questionnaire content and permissions are unapproved.
 
 ## Purpose
 

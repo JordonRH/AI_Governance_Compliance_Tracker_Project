@@ -1,5 +1,7 @@
 # AI governance in higher education: background and literature review
 
+Current context (27 September 2026): this candidate research preserves the earlier higher-education proposal framing. The running capstone prototype uses an SME baseline; see [requirements traceability](../project/capstone-requirements-traceability.md). This is neither sponsor approval nor the final research paper. Citations retain their original research date and have not been newly revalidated in this documentation-only review.
+
 Status: Candidate research baseline for team review
 Prepared: 20 September 2026
 Scope: Background work for GitHub issue #3; not a completed research paper or sponsor-approved policy position.

@@ -1,5 +1,7 @@
 # Prototype security configuration and verification
 
+For copyable activation, verification, backup/restore and recovery commands, follow [operations](operations.md). Configuration ranges and environment-file loading are in [development](development.md).
+
 ## Account access
 
 Passwords use salted scrypt hashes. Administrator resets revoke existing sessions and require the affected user to choose a new password before accessing protected workflows. Users can change their own password from **My password**; current-password verification is required and all sessions are then revoked. Administrators can inspect recent account changes in **Accounts**. Audit records never contain passwords.
@@ -8,7 +10,7 @@ Failed login attempts are throttled per connection address and login identifier 
 
 ## TLS
 
-Set both `AITRACE_TLS_CERT_PATH` and `AITRACE_TLS_KEY_PATH` to readable PEM files outside the repository, then start the server. With TLS configured, the app uses HTTPS, accepts same-origin HTTPS requests and sets Secure session cookies. Missing/invalid file contents cause startup to fail. Without both settings, it remains a loopback-only HTTP development instance. A temporary self-signed certificate can now be staged by an Administrator. Neither a trusted certificate nor a production deployment has been provisioned by this work.
+Set both `AITRACE_TLS_CERT_PATH` and `AITRACE_TLS_KEY_PATH` to readable PEM files outside the repository, then start the server. With TLS configured, the app uses HTTPS, accepts same-origin HTTPS requests and sets Secure session cookies. Missing/invalid file contents cause startup to fail. If neither a complete PEM pair nor AITRACE_TLS_BUNDLE_PATH is configured, it remains a loopback-only HTTP instance. A temporary self-signed certificate can now be staged by an Administrator. Neither a trusted certificate nor a production deployment has been provisioned by this work.
 
 Verification: configuration tests require both paths and check HTTPS mode; authenticate over the configured HTTPS origin, inspect the session cookie for Secure/HttpOnly/SameSite=Strict, and verify that another origin is rejected. Certificate trust must be verified on each demonstration device. Never commit a private key. Production scripts keep a strict script CSP; the development server explicitly permits its required Vite inline preamble.
 
