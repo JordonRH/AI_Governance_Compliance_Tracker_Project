@@ -46,7 +46,7 @@ test('persisted actions feed reminder planning and the organisation dashboard',a
   const plan=await api('/api/reminders/plan',auth(adminCookie,'POST',{policy:{id:'demo-policy',version:'1',status:'approved',upcomingDays:[1],includeDueToday:true,includeOverdue:true,overdueRepeatDays:7},context:{asOfDate:'2026-09-30'}}));
   assert.equal(plan.response.status,200);assert.equal(plan.body.reminders.length,1);assert.equal(plan.body.reminders[0].itemId,created.body.id);
   const dashboard=await api('/api/dashboard?asOfDate=2026-10-02',{headers:{Cookie:adminCookie}});
-  assert.equal(dashboard.response.status,200);assert.equal(dashboard.body.actions.total,1);assert.equal(dashboard.body.actions.overdue,1);
+  assert.equal(dashboard.response.status,200);assert.equal(dashboard.body.actions.total,1);assert.equal(dashboard.body.actions.overdue,1);assert.equal(dashboard.body.drafts.total,0);assert.equal(dashboard.body.dueActions[0].id,created.body.id);assert.equal(dashboard.body.dueActions[0].aiUseName,'Fictional AI helper');
   const other=await api('/api/actions',{headers:{Cookie:otherCookie}});assert.deepEqual(other.body.actions,[]);
 });
 test('Staff User cannot create a formal registry record',async()=>{const result=await api('/api/registry',auth(staffCookie,'POST',{...valid,approvalStatus:'Approved'}));assert.equal(result.response.status,403);});
@@ -211,4 +211,62 @@ test('certificate administration is scoped, validates replacements and never ret
  assert.equal(rejected.response.status,400);
  assert.equal((await api('/api/certificates',auth(cookie))).body.staged.fingerprint,made.body.staged.fingerprint);
  const updated=await api('/api/certificates/replace',auth(cookie,'POST',pair));assert.equal(updated.response.status,200);assert.equal(updated.body.staged.kind,'uploaded');
+});
+
+test('configuration versions preserve definitions, enforce scope and lock scoring and mandatory reading',async()=>{
+  const path='/api/governance-configuration';
+  assert.equal((await api(path,auth(staffCookie))).response.status,403);
+  const baseline=(await api(path,auth(adminCookie))).body;
+  const aiUseId=(await api('/api/registry',auth(adminCookie))).body.records[0].id;
+  const old=(await api('/api/assessments',auth(adminCookie,'POST',{aiUseId}))).body;
+  const input={expectedVersion:baseline.version,questions:baseline.questions.map(q=>({...q,label:`Fictional wording: ${q.label}`})),customRoles:[{id:'custom-manager',name:'Fictional manager',permissions:['action:manage','assessment:review']}],workflow:{allowLinkedActions:false,mandatoryPolicyReading:false}};
+  for(const body of [{...input,rules:[]},{...input,workflow:{...input.workflow,mandatoryPolicyReading:true}},{...input,customRoles:[{id:'custom-admin',name:'Invalid',permissions:['account:manage']}]},{...input,questions:[null,...input.questions.slice(1)]}])assert.equal((await api(path,auth(adminCookie,'PUT',body))).response.status,400);
+  assert.equal((await api(path,auth(staffCookie,'PUT',input))).response.status,403);
+  assert.equal((await api(path,auth(adminCookie,'PUT',input))).response.status,200);
+  assert.equal((await api(path,auth(adminCookie,'PUT',input))).response.status,409);
+  assert.equal((await api(path,auth(otherCookie))).body.version,0);
+  const fresh=(await api('/api/assessments',auth(adminCookie,'POST',{aiUseId}))).body;
+  assert.equal(fresh.definition.configurationVersion,1);assert.deepEqual(fresh.definition.rules,old.definition.rules);
+  assert.match(fresh.definition.questions[0].label,/Fictional wording/);
+  const oldAgain=(await api('/api/assessments',auth(adminCookie))).body.assessments.find(x=>x.id===old.id);assert.deepEqual(oldAgain.definition,old.definition);
+  const submitted=(await api(`/api/assessments/${fresh.id}`,auth(adminCookie,'PUT',{expectedRevision:1,submit:true,responses:{personalData:false,humanOversight:true,tested:true,disclosed:true}}))).body;
+  assert.equal((await api('/api/actions',auth(adminCookie,'POST',{aiUseId,assessmentId:submitted.id,title:'Fictional follow-up',owner:'Fictional manager',dueDate:'2026-10-01'}))).response.status,409);
+  const config=(await api(path,auth(adminCookie))).body;
+  assert.equal(config.history.length,1);assert.ok(JSON.parse(config.history[0].configuration_json).assessmentDefinition.rules.length);
+  assert.equal((await api(path,auth(adminCookie,'PUT',{...input,expectedVersion:1,workflow:{...input.workflow,allowLinkedActions:true}}))).response.status,200);
+  const action=await api('/api/actions',auth(adminCookie,'POST',{aiUseId,assessmentId:submitted.id,title:'Fictional follow-up',owner:'Fictional manager',dueDate:'2026-10-01'}));assert.equal(action.response.status,201);assert.equal(action.body.history[0].workflowConfigurationVersion,2);
+  const reopened=openDatabase(filename);assert.equal(reopened.prepare('SELECT COUNT(*) n FROM governance_configurations').get().n,2);reopened.close();
+});
+
+test('user capabilities and version-pinned custom roles enforce access, audit changes and revoke sessions',async()=>{
+  const id=await createAccount(db,{organizationId:'sme-a',organizationName:'Fictional SME A',login:'manager-capability@example.test',displayName:'Fictional capability manager',role:'staff_user',password:'correct horse battery'});
+  let cookie=await signIn('manager-capability@example.test');const path=`/api/accounts/${id}`;
+  const access={role:'staff_user',status:'active',capabilities:['report:export'],customRoleId:'custom-manager'};
+  assert.equal((await api(path,auth(otherCookie,'PATCH',access))).response.status,404);
+  assert.equal((await api(path,auth(staffCookie,'PATCH',access))).response.status,403);
+  assert.equal((await api(path,auth(adminCookie,'PATCH',{...access,capabilities:['account:manage']}))).response.status,400);
+  assert.equal((await api(path,auth(adminCookie,'PATCH',access))).response.status,200);
+  assert.equal((await api('/api/registry',auth(cookie))).response.status,401);
+  cookie=await signIn('manager-capability@example.test');
+  const principal=(await api('/api/auth/session',auth(cookie))).body.principal;
+  assert.ok(principal.permissions.includes('action:manage'));assert.ok(principal.permissions.includes('report:export'));assert.ok(!principal.permissions.includes('account:manage'));
+  assert.equal((await api('/api/reports/compliance.csv',auth(cookie))).response.status,200);
+  assert.equal((await api('/api/accounts',auth(cookie))).response.status,403);
+  assert.ok((await api('/api/actions',auth(cookie))).body.actions.length>0);
+  const config=(await api('/api/governance-configuration',auth(adminCookie))).body;
+  await api('/api/governance-configuration',auth(adminCookie,'PUT',{expectedVersion:config.version,questions:config.questions,customRoles:[],workflow:config.workflow}));
+  assert.ok((await api('/api/auth/session',auth(cookie))).body.principal.permissions.includes('action:manage'));
+  const account=(await api('/api/accounts',auth(adminCookie))).body.accounts.find(x=>x.id===id);assert.equal(account.customRole.configurationVersion,2);assert.deepEqual(account.permissions,principal.permissions);
+  assert.equal((await api(path,auth(adminCookie,'PATCH',{...access,capabilities:[],customRoleId:''}))).response.status,200);
+  assert.equal((await api('/api/registry',auth(cookie))).response.status,401);cookie=await signIn('manager-capability@example.test');assert.equal((await api('/api/reports/compliance.csv',auth(cookie))).response.status,403);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM account_audit WHERE account_id=? AND action LIKE 'capabilities:%'").get(id).n,2);
+});
+
+
+test('staff overview counts all assigned open actions while limiting the due list',async()=>{
+  const id=await createAccount(db,{organizationId:'sme-a',organizationName:'Fictional SME A',login:'overview-staff@example.test',displayName:'Fictional overview staff',role:'staff_user',password:'correct horse battery'});
+  const aiUseId=(await api('/api/registry',auth(adminCookie))).body.records[0].id;
+  for(let i=0;i<7;i++)assert.equal((await api('/api/actions',auth(adminCookie,'POST',{aiUseId,title:`Fictional assigned action ${i}`,ownerAccountId:id,dueDate:'2026-10-01'}))).response.status,201);
+  const cookie=await signIn('overview-staff@example.test'),overview=(await api('/api/dashboard',auth(cookie))).body;
+  assert.equal(overview.openActions.total,7);assert.equal(overview.dueActions.length,5);assert.ok(overview.dueActions.every(action=>action.ownerAccountId===id));
 });

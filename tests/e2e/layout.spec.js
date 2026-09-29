@@ -1,3 +1,4 @@
+import {accountControl} from './account-menu.js';
 import {test,expect} from '@playwright/test';
 
 test('consistent required fields and responsive pages', async({page}, testInfo)=>{
@@ -12,14 +13,21 @@ test('consistent required fields and responsive pages', async({page}, testInfo)=
   await page.screenshot({path:testInfo.outputPath('overview.png'),fullPage:true});
   for(const width of [1440,390]){
     await page.setViewportSize({width,height:1000});
-    for(const name of ['Registry','Disclose AI use','Accounts']){
+    for(const name of ['Registry','Accounts']){
       await page.getByRole('navigation').getByRole('button',{name,exact:true}).click();
       if(name==='Registry') await page.getByRole('button',{name:'Add AI use',exact:true}).click();
-      const form=page.locator('form.record-form');
+      const form=name==='Registry'?page.getByRole('button',{name:'Save record',exact:true}).locator('xpath=ancestor::form'):page.locator('form.record-form');
       await expect(form).toBeVisible();
       for(const input of await form.locator('[required]').all()){
         const id=await input.getAttribute('id');
-        await expect(form.locator(`label[for="${id}"] .required-mark`)).toBeVisible();
+        const marker=form.locator(`label[for="${id}"] .required-mark`);
+        if(await input.evaluate(element=>element.validity.valid)) await expect(marker).toBeHidden();
+        else await expect(marker).toBeVisible();
+      }
+      if(name==='Registry'){
+        const input=form.getByLabel('AI tool or use case');
+        await input.fill('Required marker check');
+        await expect(form.locator(`label[for="${await input.getAttribute('id')}"] .required-mark`)).toBeHidden();
       }
       await form.locator('button.primary').click();
       await expect(form).toBeVisible();
@@ -29,6 +37,6 @@ test('consistent required fields and responsive pages', async({page}, testInfo)=
     }
   }
   expect(pageErrors).toEqual([]);
-  await page.getByRole('button',{name:'Dark theme'}).click();
+  await accountControl(page,'Dark theme');
   await page.screenshot({path:testInfo.outputPath('accounts-dark-mobile.png'),fullPage:true});
 });

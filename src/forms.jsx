@@ -11,4 +11,4 @@ export function Field({children,error}) {
     {control.props.minLength && <small id={`${id}-hint`}>Use {control.props.minLength} to {control.props.maxLength} characters.</small>}
   </div>;
 }
-export function FormNote(){return <p className="form-note">Fields marked <span className="required-mark">*</span> are required.</p>}
+export function FormNote(){return <p className="form-note">Required-field markers disappear once the field has a valid value.</p>}

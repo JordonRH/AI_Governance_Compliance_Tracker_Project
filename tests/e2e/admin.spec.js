@@ -1,3 +1,4 @@
+import {accountControl} from './account-menu.js';
 import {test,expect} from '@playwright/test';
 async function login(page,identifier='admin@example.test',password='correct horse battery'){
   await page.goto('/');await page.getByLabel('Login').fill(identifier);await page.getByLabel('Password').fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();
@@ -18,7 +19,7 @@ test('administrator manages account passwords and access from the directory',asy
   await expect(page.getByRole('status')).toContainText('Password reset');
   await page.getByRole('button',{name:'Manage managed@example.test',exact:true}).click();await page.getByLabel('Account status').selectOption('disabled');await page.getByRole('button',{name:'Save access',exact:true}).click();await expect(page.getByRole('status')).toContainText('Account access updated');
   await page.getByRole('button',{name:'Manage managed@example.test',exact:true}).click();await page.getByLabel('Account status').selectOption('active');await page.getByLabel('Account role').selectOption('compliance_officer');await page.getByRole('button',{name:'Save access',exact:true}).click();await expect(page.getByRole('status')).toContainText('Account access updated');
-  await page.getByRole('button',{name:'Sign out',exact:true}).click();await login(page,'managed@example.test','replacement test password');await expect(page.getByText('Compliance Officer',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Accounts',exact:true})).toHaveCount(0);
+  await accountControl(page,'Sign out');await login(page,'managed@example.test','replacement test password');await expect(page.getByText('Compliance Officer',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Accounts',exact:true})).toHaveCount(0);
 });
 test('administrator saves styles and reloads both palettes on desktop and mobile',async({page},testInfo)=>{
   await login(page);await page.getByRole('button',{name:'Appearance',exact:true}).click();
@@ -27,6 +28,6 @@ test('administrator saves styles and reloads both palettes on desktop and mobile
     await page.getByRole('button',{name:'Appearance',exact:true}).click();
     await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:testInfo.outputPath(`${style}-desktop.png`),fullPage:true});
     await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-    await page.getByRole('button',{name:'Dark theme',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.waitForTimeout(200);await page.screenshot({path:testInfo.outputPath(`${style}-mobile-dark.png`),fullPage:true});await page.getByRole('button',{name:'Light theme',exact:true}).click();
+    await accountControl(page,'Dark theme');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.waitForTimeout(200);await page.screenshot({path:testInfo.outputPath(`${style}-mobile-dark.png`),fullPage:true});await accountControl(page,'Light theme');
   }
 });

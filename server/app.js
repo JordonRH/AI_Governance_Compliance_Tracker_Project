@@ -1,10 +1,11 @@
+import {registerGovernanceConfiguration,currentConfiguration} from './governance-config.js';
 import {registerCertificates} from './certificates.js';
 import {registerNotifications} from './notifications.js';
 import {registerPolicies} from './policies.js';
 import {registerAssessments,assessmentSummary} from './assessments.js';
 import { randomUUID } from 'node:crypto';
 import express from 'express';
-import { changeOwnPassword, manageAccount, createAccount, expiredSessionCookie, hasPermission, login, resolveRequestPrincipal, revokeRequestSession, sessionCookie } from './auth.js';
+import { effectivePermissions, changeOwnPassword, manageAccount, createAccount, expiredSessionCookie, hasPermission, login, resolveRequestPrincipal, revokeRequestSession, sessionCookie } from './auth.js';
 import { isAllowedHostHeader } from './config.js';
 import { approvalStatuses, dataSensitivities } from './registry-model.js';
 import { createComplianceCsv, createCompliancePdf } from './reporting.js';
@@ -89,6 +90,7 @@ export function createApp(db, http, {certificates} = {}) {
 
   registerCertificates(app,requirePermission,certificates);
   registerAssessments(app,db,requirePermission);
+  registerGovernanceConfiguration(app,db,requirePermission);
   registerPolicies(app,db,requirePermission);
   registerNotifications(app,db,requirePermission);
   app.get('/api/health', (_req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', mode: 'local-prototype' }); });
@@ -115,7 +117,7 @@ export function createApp(db, http, {certificates} = {}) {
     res.json({events:db.prepare('SELECT e.id,e.action,e.created_at,a.display_name actor,t.display_name target FROM account_audit e JOIN accounts a ON a.id=e.actor_id JOIN accounts t ON t.id=e.account_id WHERE e.organization_id=? ORDER BY e.id DESC LIMIT 200').all(req.principal.organizationId)});
   });
   app.get('/api/accounts', requirePermission('account:manage'), (req,res)=>{
-    const accounts=db.prepare('SELECT id,login,display_name,role,status,created_at,updated_at FROM accounts WHERE organization_id=? ORDER BY display_name,login').all(req.principal.organizationId).map(row=>({id:row.id,login:row.login,displayName:row.display_name,role:row.role,status:row.status,createdAt:row.created_at,updatedAt:row.updated_at}));
+    const accounts=db.prepare('SELECT id,login,display_name,role,status,created_at,updated_at,capabilities_json,custom_role_json FROM accounts WHERE organization_id=? ORDER BY display_name,login').all(req.principal.organizationId).map(row=>({id:row.id,login:row.login,displayName:row.display_name,role:row.role,status:row.status,createdAt:row.created_at,updatedAt:row.updated_at,permissions:effectivePermissions(row),capabilities:JSON.parse(row.capabilities_json),customRole:JSON.parse(row.custom_role_json)}));
     res.json({accounts});
   });
   app.post('/api/accounts', requirePermission('account:manage'), async (req,res,next)=>{
@@ -140,7 +142,7 @@ export function createApp(db, http, {certificates} = {}) {
     catch(error){ if(error.status) return res.status(error.status).json({error:error.message}); next(error); }
   });
   app.patch('/api/accounts/:id', requirePermission('account:manage'), async(req,res,next)=>{
-    try { await manageAccount(db,req.principal,req.params.id,{kind:'access',role:req.body?.role,status:req.body?.status}); res.json({status:'updated'}); }
+    try { await manageAccount(db,req.principal,req.params.id,{kind:'access',role:req.body?.role,status:req.body?.status,capabilities:req.body?.capabilities,customRoleId:req.body?.customRoleId}); res.json({status:'updated'}); }
     catch(error){ if(error.status) return res.status(error.status).json({error:error.message}); next(error); }
   });
   app.get('/api/registry', requirePermission('registry:read'), (req, res) => {
@@ -209,7 +211,7 @@ export function createApp(db, http, {certificates} = {}) {
 
   app.get('/api/actions', requirePermission('registry:read'), (req,res)=>{
     const rows=db.prepare('SELECT * FROM governance_actions WHERE organization_id=? ORDER BY due_date,id').all(req.principal.organizationId);
-    res.json({actions:rows.filter(row=>req.principal.role!=='staff_user'||row.owner_account_id===req.principal.accountId).map(actionFromRow)});
+    res.json({actions:rows.filter(row=>hasPermission(req.principal,'action:manage')||row.owner_account_id===req.principal.accountId).map(actionFromRow)});
   });
   app.get('/api/action-owners', requirePermission('action:manage'), (req,res)=>{
     res.json({accounts:db.prepare("SELECT id,display_name displayName,role FROM accounts WHERE organization_id=? AND status='active' ORDER BY display_name").all(req.principal.organizationId)});
@@ -218,10 +220,12 @@ export function createApp(db, http, {certificates} = {}) {
     if(!db.prepare('SELECT 1 FROM ai_uses WHERE id=? AND organization_id=?').get(req.body?.aiUseId,req.principal.organizationId)) return res.status(400).json({error:'A visible AI use is required.'});
     const owner=req.body?.ownerAccountId?db.prepare("SELECT id,display_name FROM accounts WHERE id=? AND organization_id=? AND status='active'").get(req.body.ownerAccountId,req.principal.organizationId):null;
     if(req.body?.ownerAccountId&&!owner)return res.status(400).json({error:'Choose an active owner in your organisation.'});
+    if(req.body?.assessmentId&&!currentConfiguration(db,req.principal.organizationId).workflow.allowLinkedActions)return res.status(409).json({error:'Linked actions are disabled in workflow configuration.'});
     if(req.body?.assessmentId&&!db.prepare("SELECT 1 FROM assessments WHERE id=? AND ai_use_id=? AND organization_id=? AND state='Submitted'").get(req.body.assessmentId,req.body.aiUseId,req.principal.organizationId))return res.status(400).json({error:'Choose a submitted assessment for this AI use.'});
     const result=createGovernanceAction({...req.body,...(owner?{owner:owner.display_name}:{}),id:randomUUID()},{actorId:req.principal.accountId,timestamp:new Date().toISOString()});
     if(result.status==='invalid') return res.status(400).json({error:'Check the action fields.',findings:result.findings});
-    const action=result.action;
+    const action={...result.action,workflowConfigurationVersion:currentConfiguration(db,req.principal.organizationId).version};
+    action.history=action.history.map((entry,index)=>index===0?{...entry,workflowConfigurationVersion:action.workflowConfigurationVersion}:entry);
     db.prepare(`INSERT INTO governance_actions (id,organization_id,ai_use_id,assessment_id,title,owner,due_date,status,version,created_at,updated_at,completed_at,history_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(action.id,req.principal.organizationId,action.aiUseId,action.assessmentId??null,action.title,action.owner,action.dueDate,action.status,action.version,action.createdAt,action.updatedAt,action.completedAt,JSON.stringify(action.history));
     if(owner)db.prepare('UPDATE governance_actions SET owner_account_id=? WHERE id=?').run(owner.id,action.id);
     res.status(201).json({...action,ownerAccountId:owner?.id||null});
@@ -258,8 +262,12 @@ export function createApp(db, http, {certificates} = {}) {
     const records=registry.map(record=>({id:record.id,institutionId:record.organizationId,category:record.businessArea,assessmentStatus:record.assessmentStatus,...(record.riskOutcome?{riskOutcome:record.riskOutcome}:{})}));
     const actions=db.prepare('SELECT * FROM governance_actions WHERE organization_id=?').all(req.principal.organizationId).map(actionFromRow);
     const snapshot=buildDashboardSnapshot({id:req.principal.organizationId,institutionIds:[req.principal.organizationId],categories:areas,includeRiskSummary:hasPermission(req.principal,'assessment:review'),includeActionSummary:hasPermission(req.principal,'action:manage')},records,actions,{asOfDate:req.query.asOfDate||new Date().toISOString().slice(0,10)});
+    const visibleActions=actions.filter(action=>hasPermission(req.principal,'action:manage')||action.ownerAccountId===req.principal.accountId);
+    const draftRows=db.prepare("SELECT a.id,a.ai_use_id,a.updated_at,u.name ai_use_name,a.created_by FROM assessments a JOIN ai_uses u ON u.id=a.ai_use_id WHERE a.organization_id=? AND a.state='Draft' ORDER BY a.updated_at DESC,a.id").all(req.principal.organizationId);
+    const visibleDrafts=draftRows.filter(row=>hasPermission(req.principal,'assessment:review')||row.created_by===req.principal.accountId).map(row=>({id:row.id,aiUseId:row.ai_use_id,aiUseName:row.ai_use_name,updatedAt:row.updated_at}));
+    const dueActions=visibleActions.filter(action=>action.status!=='Complete').sort((left,right)=>left.dueDate.localeCompare(right.dueDate)||left.title.localeCompare(right.title)).slice(0,5).map(action=>({...action,aiUseName:registry.find(record=>record.id===action.aiUseId)?.name||'AI use'}));
     const policySummary=hasPermission(req.principal,'action:manage')?{status:'available',...db.prepare("SELECT COUNT(*) total,SUM(CASE WHEN review_due < ? THEN 1 ELSE 0 END) overdue FROM policies p WHERE organization_id=? AND version=(SELECT MAX(version) FROM policies q WHERE q.document_id=p.document_id AND q.organization_id=p.organization_id)").get(req.query.asOfDate||new Date().toISOString().slice(0,10),req.principal.organizationId)}:{status:'restricted'};
-    res.status(snapshot.status==='invalid'?400:200).json({...snapshot,policies:policySummary});
+    res.status(snapshot.status==='invalid'?400:200).json({...snapshot,policies:policySummary,drafts:{total:visibleDrafts.length,items:visibleDrafts.slice(0,5)},openActions:{total:visibleActions.filter(action=>action.status!=='Complete').length},dueActions});
   });
 
   function reportDetails(org){
