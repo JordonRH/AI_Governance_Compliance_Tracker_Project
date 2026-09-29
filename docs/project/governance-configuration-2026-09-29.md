@@ -1,5 +1,7 @@
 # Daily workflow and controlled configuration
 
+Historical delivery record: the remaining component implementation is superseded by [30 September delivery](approved-components-2026-09-30.md), under the user-directed sponsor approval assumption.
+
 This delivery covers the implementation foundations in issues #43–#51. It uses fictional test data and synthetic assessment rules. It does not record sponsor approval, human UAT, legal compliance or production security acceptance.
 
 ## Daily workflow

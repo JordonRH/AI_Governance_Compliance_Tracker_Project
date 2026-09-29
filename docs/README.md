@@ -20,6 +20,7 @@ Start with the current runbooks below. They describe the checked-in application 
 
 These are snapshots; follow current runbooks for commands and GitHub for live issue state.
 
+- [Remaining components, 30 September](project/approved-components-2026-09-30.md): user-directed approval assumption, activation, acknowledgements, historical reporting and workflow versions.
 - [Documentation verification](project/documentation-verification-2026-09-27.md): fresh-checkout command checks and their limits.
 - [GitHub reconciliation, 27 September](project/github-reconciliation-2026-09-27.md): per-ticket evidence and disposition at that date.
 - [Ordered capstone delivery, 26 September](project/capstone-delivery-2026-09-26.md): implementation batches, commit references and evidence boundaries.
