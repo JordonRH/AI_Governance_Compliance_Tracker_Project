@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 
-import {capabilities,currentConfiguration} from './governance-config.js';
+import {capabilities,activeConfiguration} from './governance-config.js';
 
 const scrypt = promisify(scryptCallback);
 const roles = Object.freeze(['administrator', 'compliance_officer', 'staff_user']);
@@ -131,7 +131,7 @@ export async function manageAccount(db, principal, accountId, change) {
   } else if (change.kind==='access') {
     if (!roles.includes(change.role) || !['active','disabled'].includes(change.status)) fail('Choose a valid role and account status.');
     if(change.capabilities!==undefined&&(!Array.isArray(change.capabilities)||change.capabilities.some(p=>!capabilities.includes(p))||new Set(change.capabilities).size!==change.capabilities.length))fail('Choose supported capabilities.');
-    if(change.customRoleId!==undefined&&change.customRoleId!==''&&!currentConfiguration(db,principal.organizationId).customRoles.some(r=>r.id===change.customRoleId))fail('Choose an existing custom role.');
+    if(change.customRoleId!==undefined&&change.customRoleId!==''&&!(activeConfiguration(db,principal.organizationId)||{version:0,customRoles:[]}).customRoles.some(r=>r.id===change.customRoleId))fail('Choose an existing custom role.');
   } else fail('Unknown account change.');
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -150,7 +150,7 @@ export async function manageAccount(db, principal, accountId, change) {
     if(change.kind==='access'){
       if(change.capabilities!==undefined)db.prepare('UPDATE accounts SET capabilities_json=? WHERE id=?').run(JSON.stringify(change.capabilities),accountId);
       if(change.customRoleId!==undefined){
-        const config=currentConfiguration(db,principal.organizationId),role=config.customRoles.find(r=>r.id===change.customRoleId);
+        const config=(activeConfiguration(db,principal.organizationId)||{version:0,customRoles:[]}),role=config.customRoles.find(r=>r.id===change.customRoleId);
         db.prepare('UPDATE accounts SET custom_role_json=? WHERE id=?').run(role?JSON.stringify({...role,configurationVersion:config.version}):null,accountId);
       }
       if(change.capabilities!==undefined||change.customRoleId!==undefined){

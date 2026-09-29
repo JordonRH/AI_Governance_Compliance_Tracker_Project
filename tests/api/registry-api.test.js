@@ -213,14 +213,14 @@ test('certificate administration is scoped, validates replacements and never ret
  const updated=await api('/api/certificates/replace',auth(cookie,'POST',pair));assert.equal(updated.response.status,200);assert.equal(updated.body.staged.kind,'uploaded');
 });
 
-test('configuration versions preserve definitions, enforce scope and lock scoring and mandatory reading',async()=>{
+test('configuration versions preserve definitions, enforce scope and lock scoring and reject malformed workflow settings',async()=>{
   const path='/api/governance-configuration';
   assert.equal((await api(path,auth(staffCookie))).response.status,403);
   const baseline=(await api(path,auth(adminCookie))).body;
   const aiUseId=(await api('/api/registry',auth(adminCookie))).body.records[0].id;
   const old=(await api('/api/assessments',auth(adminCookie,'POST',{aiUseId}))).body;
   const input={expectedVersion:baseline.version,questions:baseline.questions.map(q=>({...q,label:`Fictional wording: ${q.label}`})),customRoles:[{id:'custom-manager',name:'Fictional manager',permissions:['action:manage','assessment:review']}],workflow:{allowLinkedActions:false,mandatoryPolicyReading:false}};
-  for(const body of [{...input,rules:[]},{...input,workflow:{...input.workflow,mandatoryPolicyReading:true}},{...input,customRoles:[{id:'custom-admin',name:'Invalid',permissions:['account:manage']}]},{...input,questions:[null,...input.questions.slice(1)]}])assert.equal((await api(path,auth(adminCookie,'PUT',body))).response.status,400);
+  for(const body of [{...input,rules:[]},{...input,workflow:{...input.workflow,mandatoryPolicyReading:"true"}},{...input,customRoles:[{id:'custom-admin',name:'Invalid',permissions:['account:manage']}]},{...input,questions:[null,...input.questions.slice(1)]}])assert.equal((await api(path,auth(adminCookie,'PUT',body))).response.status,400);
   assert.equal((await api(path,auth(staffCookie,'PUT',input))).response.status,403);
   assert.equal((await api(path,auth(adminCookie,'PUT',input))).response.status,200);
   assert.equal((await api(path,auth(adminCookie,'PUT',input))).response.status,409);
@@ -269,4 +269,132 @@ test('staff overview counts all assigned open actions while limiting the due lis
   for(let i=0;i<7;i++)assert.equal((await api('/api/actions',auth(adminCookie,'POST',{aiUseId,title:`Fictional assigned action ${i}`,ownerAccountId:id,dueDate:'2026-10-01'}))).response.status,201);
   const cookie=await signIn('overview-staff@example.test'),overview=(await api('/api/dashboard',auth(cookie))).body;
   assert.equal(overview.openActions.total,7);assert.equal(overview.dueActions.length,5);assert.ok(overview.dueActions.every(action=>action.ownerAccountId===id));
+});
+
+async function configure(change={}){
+  const current=(await api('/api/governance-configuration',auth(adminCookie))).body;
+  const result=await api('/api/governance-configuration',auth(adminCookie,'PUT',{expectedVersion:current.version,questions:current.questions,businessAreas:current.businessAreas||[],customRoles:current.customRoles,workflow:current.workflow,...change}));
+  assert.equal(result.response.status,200,JSON.stringify(result.body));return result.body;
+}
+async function transitionConfiguration(version,action,cookie=adminCookie){
+  const current=(await api('/api/governance-configuration',auth(adminCookie))).body;
+  return api(`/api/governance-configuration/${version}/lifecycle`,auth(cookie,'POST',{action,reference:'User-directed sponsor approval assumption; fictional test.',expectedLifecycleRevision:current.lifecycleRevision}));
+}
+const completeResponses={personalData:false,humanOversight:true,tested:true,disclosed:true};
+
+test('draft activation, retirement, applicability and additional requirements preserve old assessments',async()=>{
+  const baseline=(await api('/api/governance-configuration',auth(adminCookie))).body;
+  const aiUseId=(await api('/api/registry',auth(adminCookie,'POST',{...valid,name:'Fictional lifecycle use'}))).body.id;
+  const old=(await api('/api/assessments',auth(adminCookie,'POST',{aiUseId}))).body;
+  try{
+    const draft=await configure({activate:false,businessAreas:['Customer service'],questions:[...baseline.questions,{id:'additional-evidence',label:'Has fictional evidence been recorded?',topic:'Evidence review',required:true}],customRoles:[{id:'custom-unpublished',name:'Unpublished role',permissions:['action:manage']}]});
+    assert.equal((await api('/api/governance-configuration',auth(adminCookie))).body.activeVersion,baseline.activeVersion);
+    const stillOld=(await api('/api/assessments',auth(adminCookie,'POST',{aiUseId}))).body;assert.equal(stillOld.definition.configurationVersion,old.definition.configurationVersion);
+    const account=(await api('/api/accounts',auth(adminCookie))).body.accounts.find(a=>a.login==='overview-staff@example.test');
+    assert.equal((await api(`/api/accounts/${account.id}`,auth(adminCookie,'PATCH',{role:'staff_user',status:'active',customRoleId:'custom-unpublished'}))).response.status,400);
+    assert.equal((await transitionConfiguration(draft.version,'activated',staffCookie)).response.status,403);
+    assert.equal((await transitionConfiguration(draft.version,'activated',otherCookie)).response.status,404);
+    const before=(await api('/api/governance-configuration',auth(adminCookie))).body;
+    assert.equal((await transitionConfiguration(draft.version,'activated')).response.status,200);
+    assert.equal((await api(`/api/governance-configuration/${draft.version}/lifecycle`,auth(adminCookie,'POST',{action:'retired',reference:'Stale update',expectedLifecycleRevision:before.lifecycleRevision}))).response.status,409);
+    assert.equal((await api('/api/governance-configuration',auth(adminCookie,'PUT',{expectedVersion:draft.version,expectedLifecycleRevision:before.lifecycleRevision,questions:draft.questions,businessAreas:draft.businessAreas,customRoles:draft.customRoles,workflow:draft.workflow,activate:true}))).response.status,409);
+    const wrong=(await api('/api/registry',auth(adminCookie,'POST',{...valid,name:'Fictional excluded use',businessArea:'Finance'}))).body.id;
+    assert.equal((await api('/api/assessments',auth(adminCookie,'POST',{aiUseId:wrong}))).response.status,409);
+    const fresh=(await api('/api/assessments',auth(adminCookie,'POST',{aiUseId}))).body;
+    assert.equal(fresh.definition.questions.length,5);
+    assert.equal((await api(`/api/assessments/${fresh.id}`,auth(adminCookie,'PUT',{expectedRevision:1,submit:true,responses:completeResponses}))).response.status,400);
+    assert.equal((await api(`/api/assessments/${fresh.id}`,auth(adminCookie,'PUT',{expectedRevision:1,submit:true,responses:{...completeResponses,'additional-evidence':true}}))).response.status,200);
+    assert.equal((await transitionConfiguration(draft.version,'retired')).response.status,200);
+    assert.equal((await api('/api/assessments',auth(adminCookie,'POST',{aiUseId}))).response.status,409);
+    assert.equal((await api('/api/actions',auth(adminCookie,'POST',{aiUseId,title:'Paused creation',owner:'Fictional owner',dueDate:'2026-10-01'}))).response.status,409);
+    assert.equal((await api(`/api/assessments/${old.id}`,auth(adminCookie,'PUT',{expectedRevision:1,submit:true,responses:completeResponses}))).response.status,200);
+    const stored=(await api('/api/assessments',auth(adminCookie))).body.assessments.find(a=>a.id===old.id);assert.deepEqual(stored.definition,old.definition);
+    assert.equal((await transitionConfiguration(draft.version,'activated')).response.status,200);
+    assert.ok((await api('/api/governance-configuration',auth(adminCookie))).body.events.some(e=>e.action==='retired'&&e.reference.includes('assumption')));
+  }finally{await configure({questions:baseline.questions,businessAreas:baseline.businessAreas||[],customRoles:baseline.customRoles,workflow:baseline.workflow});}
+});
+
+test('mandatory policy receipts bind the submitting user to exact draft policy versions',async()=>{
+  const baseline=(await api('/api/governance-configuration',auth(adminCookie))).body;
+  const aiUseId=(await api('/api/registry',auth(adminCookie,'POST',{...valid,name:'Fictional acknowledgement use'}))).body.id;
+  const legacy=(await api('/api/assessments',auth(staffCookie,'POST',{aiUseId}))).body;
+  const reviewerId=(await api('/api/accounts',auth(adminCookie))).body.accounts.find(a=>a.role==='administrator').id;
+  const policyBody={title:'Fictional required reading',filename:'reading.txt',mediaType:'text/plain',content:Buffer.from('Fictional policy version one.').toString('base64'),reviewerId,reviewDue:'2027-01-01',checklist:['personalData']};
+  const first=(await api('/api/policies',auth(adminCookie,'POST',policyBody))).body;
+  try{
+    await configure({workflow:{...baseline.workflow,mandatoryPolicyReading:true}});
+    const draft=(await api('/api/assessments',auth(staffCookie,'POST',{aiUseId}))).body;
+    assert.ok(draft.definition.requiredPolicies.some(p=>p.id===first.id&&p.version===1));
+    const second=(await api('/api/policies',auth(adminCookie,'POST',{...policyBody,documentId:first.documentId,content:Buffer.from('Fictional policy version two.').toString('base64')}))).body;
+    const fresh=(await api('/api/assessments',auth(staffCookie,'POST',{aiUseId}))).body;
+    assert.ok(fresh.definition.requiredPolicies.some(p=>p.id===second.id&&p.version===2));
+    assert.equal((await api(`/api/assessments/${draft.id}/acknowledgements`,auth(otherCookie,'POST',{policyId:first.id,acknowledge:true}))).response.status,404);
+    assert.equal((await api(`/api/assessments/${draft.id}/acknowledgements`,auth(staffCookie,'POST',{policyId:second.id,acknowledge:true}))).response.status,400);
+    assert.equal((await api(`/api/assessments/${draft.id}`,auth(staffCookie,'PUT',{expectedRevision:1,submit:true,responses:completeResponses}))).response.status,400);
+    for(const policy of draft.definition.requiredPolicies){
+      assert.equal((await api(`/api/assessments/${draft.id}/acknowledgements`,auth(staffCookie,'POST',{policyId:policy.id,acknowledge:true}))).response.status,200);
+      assert.equal((await api(`/api/assessments/${draft.id}/acknowledgements`,auth(staffCookie,'POST',{policyId:policy.id,acknowledge:true}))).response.status,200);
+    }
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM policy_acknowledgements WHERE assessment_id=?').get(draft.id).n,draft.definition.requiredPolicies.length);
+    assert.equal((await api(`/api/assessments/${draft.id}`,auth(adminCookie,'PUT',{expectedRevision:1,submit:true,responses:completeResponses}))).response.status,400);
+    const submitted=await api(`/api/assessments/${draft.id}`,auth(staffCookie,'PUT',{expectedRevision:1,submit:true,responses:completeResponses}));assert.equal(submitted.response.status,200);
+    assert.equal(submitted.body.result.policyAcknowledgements.length,draft.definition.requiredPolicies.length);assert.equal(submitted.body.result.policyAcknowledgements.find(a=>a.policyId===first.id).sha256,draft.definition.requiredPolicies.find(p=>p.id===first.id).sha256);
+    assert.equal((await api(`/api/assessments/${draft.id}/acknowledgements`,auth(staffCookie,'POST',{policyId:first.id,acknowledge:true}))).response.status,409);
+    assert.equal((await api(`/api/assessments/${legacy.id}`,auth(staffCookie,'PUT',{expectedRevision:1,submit:true,responses:completeResponses}))).response.status,200);
+  }finally{await configure({workflow:baseline.workflow});}
+});
+
+test('action transition settings are enforced from creation snapshots after later configuration changes',async()=>{
+  const baseline=(await api('/api/governance-configuration',auth(adminCookie))).body;
+  const aiUseId=(await api('/api/registry',auth(adminCookie))).body.records[0].id;
+  const body={aiUseId,title:'Fictional workflow action',owner:'Fictional owner',dueDate:'2026-10-01'};
+  const legacy=(await api('/api/actions',auth(adminCookie,'POST',body))).body;
+  try{
+    await configure({workflow:{...baseline.workflow,requireInProgressBeforeCompletion:true,allowReopen:false}});
+    const strict=(await api('/api/actions',auth(adminCookie,'POST',body))).body;
+    await configure({workflow:baseline.workflow});
+    assert.equal((await api(`/api/actions/${strict.id}`,auth(adminCookie,'PUT',{expectedVersion:1,status:'Complete'}))).response.status,400);
+    assert.equal((await api(`/api/actions/${strict.id}`,auth(adminCookie,'PUT',{expectedVersion:1,status:'In Progress'}))).response.status,200);
+    assert.equal((await api(`/api/actions/${strict.id}`,auth(adminCookie,'PUT',{expectedVersion:2,status:'Complete'}))).response.status,200);
+    assert.equal((await api(`/api/actions/${strict.id}`,auth(adminCookie,'PUT',{expectedVersion:3,status:'In Progress'}))).response.status,400);
+    assert.equal((await api(`/api/actions/${legacy.id}`,auth(adminCookie,'PUT',{expectedVersion:1,status:'Complete'}))).response.status,200);
+    assert.equal((await api(`/api/actions/${legacy.id}`,auth(adminCookie,'PUT',{expectedVersion:2,status:'In Progress'}))).response.status,200);
+  }finally{await configure({workflow:baseline.workflow});}
+});
+
+test('historical report and exports reconstruct captured edits, submissions and policy reviews by date',async()=>{
+  await createAccount(db,{organizationId:'history-sme',organizationName:'Fictional history SME',login:'history@example.test',displayName:'Fictional historian',role:'administrator',password:'correct horse battery'});
+  const cookie=await signIn('history@example.test'),reviewerId=db.prepare("SELECT id FROM accounts WHERE login='history@example.test'").get().id;
+  // Controlled capture timestamps belong only to this isolated test organisation.
+  db.prepare('UPDATE reporting_coverage SET started_at=? WHERE organization_id=?').run('2026-01-01T00:00:00.000Z','history-sme');
+  const stamp=(entity,id,date)=>db.prepare('UPDATE reporting_history SET recorded_at=? WHERE id=(SELECT MAX(id) FROM reporting_history WHERE organization_id=? AND entity=? AND record_id=?)').run(`${date}T12:00:00.000Z`,'history-sme',entity,id);
+  const record=(await api('/api/registry',auth(cookie,'POST',{...valid,name:'Fictional original name'}))).body;stamp('ai_uses',record.id,'2026-01-10');
+  const assessment=(await api('/api/assessments',auth(cookie,'POST',{aiUseId:record.id}))).body;stamp('assessments',assessment.id,'2026-01-10');
+  const action=(await api('/api/actions',auth(cookie,'POST',{aiUseId:record.id,title:'Fictional historic action',owner:'Fictional owner',dueDate:'2026-01-09'}))).body;stamp('governance_actions',action.id,'2026-01-10');
+  const policy=(await api('/api/policies',auth(cookie,'POST',{title:'Fictional historical policy',filename:'history.txt',mediaType:'text/plain',content:Buffer.from('Fictional policy.').toString('base64'),reviewerId,reviewDue:'2026-01-10',checklist:['personalData']}))).body;stamp('policies',policy.id,'2026-01-10');
+  assert.equal((await api(`/api/registry/${record.id}`,auth(cookie,'PUT',{...valid,name:'Fictional revised name'}))).response.status,200);stamp('ai_uses',record.id,'2026-01-11');
+  assert.equal((await api(`/api/assessments/${assessment.id}`,auth(cookie,'PUT',{expectedRevision:1,submit:true,responses:completeResponses}))).response.status,200);stamp('assessments',assessment.id,'2026-01-11');
+  assert.equal((await api(`/api/actions/${action.id}`,auth(cookie,'PUT',{expectedVersion:1,status:'Complete'}))).response.status,200);stamp('governance_actions',action.id,'2026-01-11');
+  assert.equal((await api(`/api/policies/${policy.id}/review`,auth(cookie,'POST',{reviewDue:'2027-01-01'}))).response.status,200);stamp('policies',policy.id,'2026-01-11');
+  const historical=(await api('/api/reports/snapshot?asOfDate=2026-01-10',auth(cookie))).body;
+  assert.equal(historical.records[0].name,'Fictional original name');assert.equal(historical.registry.notAssessed,1);assert.equal(historical.actions.outstanding,1);assert.equal(historical.actions.overdue,1);assert.equal(historical.details.policies[0].reviewedAt,null);assert.equal(historical.details.policies[0].reviewDue,'2026-01-10');
+  const newer=(await api('/api/reports/snapshot?asOfDate=2026-01-11',auth(cookie))).body;
+  assert.equal(newer.records[0].name,'Fictional revised name');assert.equal(newer.registry.notAssessed,0);assert.equal(newer.actions.outstanding,0);assert.equal(newer.details.policies[0].reviewDue,'2027-01-01');
+  const csv=await api('/api/reports/compliance.csv?asOfDate=2026-01-10',auth(cookie));assert.equal(csv.response.status,200);const text=Buffer.from(csv.body).toString();assert.match(text,/As at 2026-01-10 UTC/);assert.match(text,/Fictional original name/);assert.doesNotMatch(text,/Fictional revised name/);assert.match(text,/Not Started/);
+  const pdf=await api('/api/reports/compliance.pdf?asOfDate=2026-01-10',auth(cookie));assert.equal(pdf.response.status,200);assert.equal(Buffer.from(pdf.body).subarray(0,4).toString(),'%PDF');
+  assert.equal((await api('/api/reports/snapshot?asOfDate=2025-12-31',auth(cookie))).response.status,400);
+  assert.equal((await api('/api/reports/compliance.csv?asOfDate=2026-02-30',auth(cookie))).response.status,400);
+  assert.equal((await api('/api/reports/snapshot?asOfDate=2099-01-01',auth(cookie))).response.status,400);
+  assert.equal((await api('/api/reports/snapshot',auth(staffCookie))).response.status,403);
+  assert.equal((await api('/api/reports/snapshot',auth(otherCookie))).body.records.some(r=>r.id===record.id),false);
+  const reopen=openDatabase(filename);assert.equal(reopen.prepare('SELECT COUNT(*) n FROM reporting_history WHERE organization_id=?').get('history-sme').n,8);reopen.close();
+});
+
+test('mandatory acknowledgement blocks new drafts when no policy is linked',async()=>{
+  await createAccount(db,{organizationId:'no-policy-sme',organizationName:'Fictional no-policy SME',login:'no-policy@example.test',displayName:'Fictional policy administrator',role:'administrator',password:'correct horse battery'});
+  const cookie=await signIn('no-policy@example.test'),config=(await api('/api/governance-configuration',auth(cookie))).body;
+  const record=(await api('/api/registry',auth(cookie,'POST',{...valid,name:'Fictional no-policy use'}))).body;
+  assert.equal((await api('/api/governance-configuration',auth(cookie,'PUT',{expectedVersion:config.version,questions:config.questions,customRoles:config.customRoles,workflow:{...config.workflow,mandatoryPolicyReading:true}}))).response.status,200);
+  const draft=await api('/api/assessments',auth(cookie,'POST',{aiUseId:record.id}));assert.equal(draft.response.status,409);assert.match(draft.body.error,/no current policy is linked/);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM assessments WHERE organization_id=?').get('no-policy-sme').n,0);
 });

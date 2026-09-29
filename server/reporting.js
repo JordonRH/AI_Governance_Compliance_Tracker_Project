@@ -10,6 +10,7 @@ const csvCell=value=>{
 export function createComplianceCsv(records,details={}){
  const headings=['Type','Name','Purpose / details','Owner / reviewer','Business area','Data sensitivity','Approval status','Assessment status','Risk result','Status','Due date','Version','Source','Updated at'];
  const rows=records.map(r=>['AI use',r.name,r.purpose,r.owner,r.businessArea,r.dataSensitivity,r.approvalStatus,r.assessmentStatus,r.riskOutcome?.label,'','', '',r.source,r.updatedAt]);
+ if(details.asOfDate)rows.unshift(['Report',`As at ${details.asOfDate} UTC`,`History captured from ${details.coverageStart}`,'','','','','','','','','','',details.asOfDate]);
  for(const a of details.assessments||[])rows.push(['Assessment',a.aiUseName,a.explanations,a.author,'','','',a.state,a.risk,'','',a.definitionVersion,'Demonstration only',a.updatedAt]);
  for(const a of details.actions||[])rows.push(['Action',a.title,a.aiUseName,a.owner,'','','','', '',a.status,a.dueDate,a.version,'Action tracker',a.updatedAt]);
  for(const p of details.policies||[])rows.push(['Policy',p.title,p.checklist,p.reviewer,'','','','','',p.reviewedAt?'Reviewed':'Review pending',p.reviewDue,p.version,p.filename,p.createdAt]);
@@ -23,7 +24,8 @@ export async function createCompliancePdf(records,organizationName,generatedAt=n
  const paragraph=text=>{doc.fontSize(10).fillColor('#172742').text(String(text),{width:505,lineGap:3}).moveDown(.5)};
  doc.fontSize(22).fillColor('#00306e').text('AI governance summary');
  paragraph(organizationName);paragraph(`Generated ${generatedAt}`);
- paragraph('Prototype self-assessment evidence. Demonstration risk rules are not sponsor-approved policy, legal advice, or compliance certification.');
+ if(details.asOfDate)paragraph(`As at ${details.asOfDate} (end of UTC day). History captured from ${details.coverageStart}.`);
+ paragraph('Prototype self-assessment evidence using synthetic demonstration scoring. Not legal advice or compliance certification.');
  paragraph(`${records.length} AI uses | ${(details.actions||[]).length} actions | ${(details.policies||[]).length} policy versions`);
  heading('AI use register');
  if(!records.length)paragraph('No AI uses recorded.');

@@ -11,7 +11,7 @@ test('all workspace pages pass automated accessibility checks in both themes',as
   if(await page.locator('html').getAttribute('data-theme')==='dark')await accountControl(page,'Light theme');
  for(const theme of ['light','dark']){
   if(theme==='dark')await accountControl(page,'Dark theme');
-  for(const name of ['Overview','Registry','Assessments','Actions','Policies','Notifications','Guide','Accounts','Configuration','Appearance','Certificates','My password']){
+  for(const name of ['Overview','Registry','Assessments','Actions','Policies','Notifications','Reports','Guide','Accounts','Configuration','Appearance','Certificates','My password']){
    await page.getByRole('navigation').getByRole('button',{name,exact:true}).click();
    await page.waitForTimeout(180);
    const result=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();

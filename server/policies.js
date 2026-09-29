@@ -1,3 +1,4 @@
+import {activeConfiguration} from './governance-config.js';
 ﻿import {randomUUID,createHash} from 'node:crypto';
 import {isDateOnly} from './domain/validation.js';
 import {demoDefinition} from './assessment-definition.js';
@@ -5,7 +6,7 @@ const columns='id,document_id,version,title,filename,media_type,sha256,checklist
 export function registerPolicies(app,db,requirePermission){
  app.get('/api/policies',requirePermission('registry:read'),(req,res)=>{
   const policies=db.prepare(`SELECT ${columns} FROM policies WHERE organization_id=? ORDER BY title,version DESC`).all(req.principal.organizationId).map(r=>({...r,checklist:JSON.parse(r.checklist_json),checklist_json:undefined}));
-  res.json({policies,questions:demoDefinition('demo').questions.map(q=>({id:q.id,label:q.label})),maxBytes:1048576});
+  res.json({policies,questions:(activeConfiguration(db,req.principal.organizationId)?.questions||demoDefinition('demo').questions).map(q=>({id:q.id,label:q.label})),maxBytes:1048576});
  });
  app.post('/api/policies',requirePermission('action:manage'),(req,res)=>{
   const b=req.body;
@@ -15,7 +16,7 @@ export function registerPolicies(app,db,requirePermission){
   const pdf=b.mediaType==='application/pdf'&&b.filename.toLowerCase().endsWith('.pdf')&&content.subarray(0,5).toString()==='%PDF-';
   let plain=false;try{plain=b.mediaType==='text/plain'&&b.filename.toLowerCase().endsWith('.txt')&&!new TextDecoder('utf-8',{fatal:true}).decode(content).includes('\0')}catch{}
   if(!pdf&&!plain)return res.status(400).json({error:'Only PDF files with a PDF signature or UTF-8 text files are supported.'});
-  const questions=demoDefinition('demo').questions;
+  const questions=(activeConfiguration(db,req.principal.organizationId)?.questions||demoDefinition('demo').questions);
   if(!Array.isArray(b.checklist)||b.checklist.some(id=>!questions.some(q=>q.id===id))||new Set(b.checklist).size!==b.checklist.length)return res.status(400).json({error:'Choose valid checklist links.'});
   if(!db.prepare("SELECT 1 FROM accounts WHERE id=? AND organization_id=? AND status='active' AND role IN ('administrator','compliance_officer')").get(b.reviewerId,req.principal.organizationId))return res.status(400).json({error:'Choose an active Administrator or Compliance Officer reviewer.'});
   const previous=b.documentId?db.prepare('SELECT version FROM policies WHERE document_id=? AND organization_id=? ORDER BY version DESC LIMIT 1').get(b.documentId,req.principal.organizationId):null;

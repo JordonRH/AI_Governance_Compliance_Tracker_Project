@@ -1,4 +1,5 @@
-import {registerGovernanceConfiguration,currentConfiguration} from './governance-config.js';
+import {historicalReport} from './historical-reporting.js';
+import {registerGovernanceConfiguration,activeConfiguration,defaultWorkflow} from './governance-config.js';
 import {registerCertificates} from './certificates.js';
 import {registerNotifications} from './notifications.js';
 import {registerPolicies} from './policies.js';
@@ -217,15 +218,17 @@ export function createApp(db, http, {certificates} = {}) {
     res.json({accounts:db.prepare("SELECT id,display_name displayName,role FROM accounts WHERE organization_id=? AND status='active' ORDER BY display_name").all(req.principal.organizationId)});
   });
   app.post('/api/actions', requirePermission('action:manage'), (req,res)=>{
+    const configuration=activeConfiguration(db,req.principal.organizationId);
+    if(!configuration)return res.status(409).json({error:'Activate a configuration before creating new actions.'});
     if(!db.prepare('SELECT 1 FROM ai_uses WHERE id=? AND organization_id=?').get(req.body?.aiUseId,req.principal.organizationId)) return res.status(400).json({error:'A visible AI use is required.'});
     const owner=req.body?.ownerAccountId?db.prepare("SELECT id,display_name FROM accounts WHERE id=? AND organization_id=? AND status='active'").get(req.body.ownerAccountId,req.principal.organizationId):null;
     if(req.body?.ownerAccountId&&!owner)return res.status(400).json({error:'Choose an active owner in your organisation.'});
-    if(req.body?.assessmentId&&!currentConfiguration(db,req.principal.organizationId).workflow.allowLinkedActions)return res.status(409).json({error:'Linked actions are disabled in workflow configuration.'});
+    if(req.body?.assessmentId&&!configuration.workflow.allowLinkedActions)return res.status(409).json({error:'Linked actions are disabled in workflow configuration.'});
     if(req.body?.assessmentId&&!db.prepare("SELECT 1 FROM assessments WHERE id=? AND ai_use_id=? AND organization_id=? AND state='Submitted'").get(req.body.assessmentId,req.body.aiUseId,req.principal.organizationId))return res.status(400).json({error:'Choose a submitted assessment for this AI use.'});
     const result=createGovernanceAction({...req.body,...(owner?{owner:owner.display_name}:{}),id:randomUUID()},{actorId:req.principal.accountId,timestamp:new Date().toISOString()});
     if(result.status==='invalid') return res.status(400).json({error:'Check the action fields.',findings:result.findings});
-    const action={...result.action,workflowConfigurationVersion:currentConfiguration(db,req.principal.organizationId).version};
-    action.history=action.history.map((entry,index)=>index===0?{...entry,workflowConfigurationVersion:action.workflowConfigurationVersion}:entry);
+    const action={...result.action,workflowConfigurationVersion:configuration.version};
+    action.history=action.history.map((entry,index)=>index===0?{...entry,workflowConfigurationVersion:action.workflowConfigurationVersion,workflow:{...defaultWorkflow(),...configuration.workflow}}:entry);
     db.prepare(`INSERT INTO governance_actions (id,organization_id,ai_use_id,assessment_id,title,owner,due_date,status,version,created_at,updated_at,completed_at,history_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(action.id,req.principal.organizationId,action.aiUseId,action.assessmentId??null,action.title,action.owner,action.dueDate,action.status,action.version,action.createdAt,action.updatedAt,action.completedAt,JSON.stringify(action.history));
     if(owner)db.prepare('UPDATE governance_actions SET owner_account_id=? WHERE id=?').run(owner.id,action.id);
     res.status(201).json({...action,ownerAccountId:owner?.id||null});
@@ -234,6 +237,9 @@ export function createApp(db, http, {certificates} = {}) {
     const row=db.prepare('SELECT * FROM governance_actions WHERE id=? AND organization_id=?').get(req.params.id,req.principal.organizationId);
     if(!row) return res.status(404).json({error:'Governance action was not found.'});
     const patch={...req.body};
+    const workflow=JSON.parse(row.history_json)[0]?.workflow||defaultWorkflow();
+    if(patch.status==='Complete'&&row.status==='Not Started'&&workflow.requireInProgressBeforeCompletion)return res.status(400).json({error:'This action requires In Progress before completion.'});
+    if(patch.status&&patch.status!=='Complete'&&row.status==='Complete'&&!workflow.allowReopen)return res.status(400).json({error:'The workflow version for this action does not allow reopening.'});
     let ownerId=row.owner_account_id;
     if(patch.ownerAccountId!==undefined){const owner=db.prepare("SELECT id,display_name FROM accounts WHERE id=? AND organization_id=? AND status='active'").get(patch.ownerAccountId,req.principal.organizationId);if(!owner)return res.status(400).json({error:'Choose an active owner in your organisation.'});ownerId=owner.id;patch.owner=owner.display_name;delete patch.ownerAccountId;}
     const result=updateGovernanceAction(actionFromRow(row),patch,{actorId:req.principal.accountId,timestamp:new Date().toISOString()});
@@ -276,11 +282,20 @@ export function createApp(db, http, {certificates} = {}) {
     const policies=db.prepare('SELECT p.title,p.review_due,p.reviewed_at,p.filename,p.version,p.checklist_json,p.created_at,a.display_name reviewer FROM policies p JOIN accounts a ON a.id=p.reviewer_id WHERE p.organization_id=? ORDER BY title,version DESC').all(org).map(p=>({title:p.title,reviewer:p.reviewer,reviewDue:p.review_due,reviewedAt:p.reviewed_at,filename:p.filename,version:p.version,checklist:JSON.parse(p.checklist_json).join(', '),createdAt:p.created_at}));
     return {assessments,actions,policies};
   }
+  app.get('/api/reports/snapshot',requirePermission('report:export'),(req,res)=>{
+    try{res.json(historicalReport(db,req.principal.organizationId,req.query.asOfDate||new Date().toISOString().slice(0,10)))}catch(error){if(error.status)return res.status(error.status).json({error:error.message});throw error;}
+  });
   app.get('/api/reports/compliance.csv', requirePermission('report:export'), async (req,res)=>{
+    if(req.query.asOfDate!==undefined){
+      try{const snapshot=historicalReport(db,req.principal.organizationId,req.query.asOfDate);return res.type('text/csv').set('Content-Disposition','attachment; filename="aitrace-historical-summary.csv"').send(createComplianceCsv(snapshot.records,snapshot.details))}catch(error){if(error.status)return res.status(error.status).json({error:error.message});throw error;}
+    }
     const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record));
     res.type('text/csv').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.csv"').send(createComplianceCsv(records,reportDetails(req.principal.organizationId)));
   });
   app.get('/api/reports/compliance.pdf', requirePermission('report:export'), async (req,res)=>{
+    if(req.query.asOfDate!==undefined){
+      try{const snapshot=historicalReport(db,req.principal.organizationId,req.query.asOfDate);return res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-historical-summary.pdf"').send(await createCompliancePdf(snapshot.records,req.principal.organizationName,new Date().toISOString(),snapshot.details))}catch(error){if(error.status)return res.status(error.status).json({error:error.message});throw error;}
+    }
     const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record));
     res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.pdf"').send(await createCompliancePdf(records,req.principal.organizationName,new Date().toISOString(),reportDetails(req.principal.organizationId)));
   });
