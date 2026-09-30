@@ -7,6 +7,7 @@ Start with the current runbooks below. They describe the checked-in application 
 | Document | Use it for |
 | --- | --- |
 | [Development](project/development.md) | Fresh clone, first Administrator, all npm commands, configuration, tests and troubleshooting |
+| [Fictional testing pack](project/testing-pack.md) | Repeatable test accounts, configuration variants, backups and local catalogue |
 | [User guide](project/user-guide.md) | Every workspace screen, role permissions and fictional-data demonstration |
 | [Operations](project/operations.md) | Start/stop, HTTPS activation/replacement, backups/restores, recovery and upgrades |
 | [Contributor workflow](project/contributing.md) | Change code, verify, commit, push and open a GitHub PR without AI/CLI integrations |
