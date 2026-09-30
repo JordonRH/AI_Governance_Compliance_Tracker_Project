@@ -1,3 +1,4 @@
+import {buildReportAnalytics} from './domain/report-analytics.js';
 import {isDateOnly} from './domain/validation.js';
 
 export function historicalReport(db,organizationId,date){
@@ -23,5 +24,6 @@ export function historicalReport(db,organizationId,date){
     const result=JSON.parse(row.result_json),definition=JSON.parse(row.definition_json);
     return {aiUseName:name(row.ai_use_id),author:row.created_by,state:row.state,risk:result.outcome.label,definitionVersion:`${definition.id}/${definition.version}`,explanations:result.triggeredRules.map(rule=>rule.explanation).join(' '),updatedAt:row.updated_at};
   }),actions,policies:entities('policies').map(row=>({title:row.title,reviewer:row.reviewer_id,reviewDue:row.review_due,reviewedAt:row.reviewed_at,filename:row.filename,version:row.version,checklist:JSON.parse(row.checklist_json).join(', '),createdAt:row.created_at}))};
-  return {asOfDate:date,coverageStart:coverage,records,details,registry:{total:records.length,notAssessed:records.filter(row=>row.assessmentStatus==='Not assessed').length},actions:{status:'available',outstanding:actions.filter(row=>row.status!=='Complete').length,overdue:actions.filter(row=>row.status!=='Complete'&&row.dueDate<date).length}};
+  const reports=buildReportAnalytics({records,assessments:entities('assessments'),actions,policies:entities('policies'),date});
+  return {asOfDate:date,coverageStart:coverage,records,details,reports,registry:{total:records.length,notAssessed:records.filter(row=>row.assessmentStatus==='Not assessed').length},actions:{status:'available',outstanding:actions.filter(row=>row.status!=='Complete').length,overdue:actions.filter(row=>row.status!=='Complete'&&row.dueDate<date).length}};
 }

@@ -47,13 +47,24 @@ Open **Registry**, expand **Disclose an unregistered AI tool**, and describe the
 
 ## Configuration and historical reporting
 
-Administrators open **Configuration** to edit question wording/topics, add required or optional evidence questions and restrict business-area applicability. The four scoring inputs remain required and the synthetic scoring rules stay fixed. Extra questions do not alter risk scores. Leave applicability blank for all areas or enter exact Registry business-area names, one per line.
+Administrators open **Configuration** and use the **Assessment requirements**, **Workflow settings**, **Custom capability roles** and **Version history** sections. Edits stay in place when switching sections. Assessment requirements lets you edit question wording/topics, add required or optional evidence questions and restrict business-area applicability. The four scoring inputs remain required and the synthetic scoring rules stay fixed. Extra questions do not alter risk scores. Leave applicability blank for all areas or enter exact Registry business-area names, one per line.
 
-Use **Save draft version** to prepare changes without activating them, or **Save and activate version** to publish for new work. Enter the approval/change reference. Expand a saved version in Configuration history to activate it later. **Retire active version** pauses new assessments and actions; existing records remain available. The Activation audit records who changed activation, when and the reference. Sponsor approval is assumed at the user's direction for this implementation; this does not document a sponsor meeting or human UAT.
+Use **Save draft version** to prepare changes without activating them, or **Save and activate version** to publish for new work. Enter the approval/change reference. Open **Version history** and expand a saved version to activate it later. Save unsaved edits first; activation and retirement are disabled while the editor contains unsaved changes. **Retire active version** pauses new assessments and actions; existing records remain available. The Activation audit records who changed activation, when and the reference. Sponsor approval is assumed at the user's direction for this implementation; this does not document a sponsor meeting or human UAT.
 
-Workflow switches control new assessment links, policy acknowledgement, requiring In Progress before completion, and whether completed actions can reopen. Assessment and action requirements are captured at creation. If policy acknowledgement is required but no current policy is linked to a question, link a policy before starting a new assessment. Later policy versions do not replace a draft's required versions. Reading acknowledgement records a user declaration rather than proving comprehension.
+The Workflow settings section has a live process preview and four control cards. Each explains the selected behaviour, an example and which new work it affects. The controls cover new assessment links, policy acknowledgement, requiring In Progress before completion, and whether completed actions can reopen. The preview reflects unsaved edits; only activation changes the setup used for new work. Assessment and action requirements are captured at creation. If policy acknowledgement is required but no current policy is linked to a question, link a policy before starting a new assessment. Later policy versions do not replace a draft's required versions. Reading acknowledgement records a user declaration rather than proving comprehension.
 
-**Reports** reconstructs records at the end of the selected UTC day and exports that date to CSV/PDF. The capture start is displayed. Earlier states were not captured and cannot be reported; today's view changes as records are saved. On an upgraded database, history starts at the upgrade baseline, not the original record creation date.
+**Reports** reconstructs records at the end of the selected UTC day. Choose a date and **Refresh view**, then switch between six report cards:
+
+- **Registry approvals**: AI uses by Not reviewed, Approved or Declined.
+- **Assessments**: all Draft and Submitted assessment records, including repeat assessments of an AI use.
+- **Actions**: Not Started, In Progress and Complete, with a separate overdue count.
+- **Policy reviews**: latest version of each policy document, classified as Review pending, Due today, Overdue or Reviewed. A due/overdue review takes precedence over an earlier review receipt.
+- **Risk outcomes**: the latest submitted result per AI use, including Not assessed and the fixed demonstration outcomes.
+- **Business areas**: AI use counts and shares by area.
+
+Choose **Bar chart**, **Doughnut chart** or **Data table**. Counts and percentages remain visible alongside charts; selecting a chart category filters the underlying records. Search and category filters apply only to the record list, not report totals or exports. **Export CSV** and **Export PDF** download the selected report's complete breakdown and records at the displayed date; PDF includes a bar-chart summary. Expand **Full governance evidence export** for all registry records, submitted evidence, actions and policy versions. Changing the date disables exports until the refreshed view matches it.
+
+The capture start is displayed. Earlier states were not captured and cannot be reported; today's view changes as records are saved. On an upgraded database, history starts at the upgrade baseline, not the original record creation date.
 
 ## Demonstration checklist and expected results
 

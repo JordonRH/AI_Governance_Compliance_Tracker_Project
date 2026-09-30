@@ -1,3 +1,5 @@
+import {selectReport} from './domain/report-analytics.js';
+import {createReportCsv,createReportPdf} from './report-exports.js';
 import {historicalReport} from './historical-reporting.js';
 import {registerGovernanceConfiguration,activeConfiguration,defaultWorkflow} from './governance-config.js';
 import {registerCertificates} from './certificates.js';
@@ -285,20 +287,26 @@ export function createApp(db, http, {certificates} = {}) {
   app.get('/api/reports/snapshot',requirePermission('report:export'),(req,res)=>{
     try{res.json(historicalReport(db,req.principal.organizationId,req.query.asOfDate||new Date().toISOString().slice(0,10)))}catch(error){if(error.status)return res.status(error.status).json({error:error.message});throw error;}
   });
-  app.get('/api/reports/compliance.csv', requirePermission('report:export'), async (req,res)=>{
-    if(req.query.asOfDate!==undefined){
-      try{const snapshot=historicalReport(db,req.principal.organizationId,req.query.asOfDate);return res.type('text/csv').set('Content-Disposition','attachment; filename="aitrace-historical-summary.csv"').send(createComplianceCsv(snapshot.records,snapshot.details))}catch(error){if(error.status)return res.status(error.status).json({error:error.message});throw error;}
-    }
-    const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record));
-    res.type('text/csv').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.csv"').send(createComplianceCsv(records,reportDetails(req.principal.organizationId)));
-  });
-  app.get('/api/reports/compliance.pdf', requirePermission('report:export'), async (req,res)=>{
-    if(req.query.asOfDate!==undefined){
-      try{const snapshot=historicalReport(db,req.principal.organizationId,req.query.asOfDate);return res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-historical-summary.pdf"').send(await createCompliancePdf(snapshot.records,req.principal.organizationName,new Date().toISOString(),snapshot.details))}catch(error){if(error.status)return res.status(error.status).json({error:error.message});throw error;}
-    }
-    const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record));
-    res.type('application/pdf').set('Content-Disposition','attachment; filename="aitrace-compliance-summary.pdf"').send(await createCompliancePdf(records,req.principal.organizationName,new Date().toISOString(),reportDetails(req.principal.organizationId)));
-  });
+  for(const format of ['csv','pdf']){
+    app.get(`/api/reports/compliance.${format}`,requirePermission('report:export'),async(req,res)=>{
+      try{
+        let content,filename='aitrace-compliance-summary';
+        if(req.query.asOfDate!==undefined||req.query.report!==undefined){
+          const snapshot=historicalReport(db,req.principal.organizationId,req.query.asOfDate??new Date().toISOString().slice(0,10));
+          const selected=req.query.report===undefined?null:selectReport(snapshot,req.query.report);
+          filename=`aitrace-${selected?.id||'governance'}-${snapshot.asOfDate}`;
+          content=selected
+            ? format==='csv'?createReportCsv(selected,snapshot):await createReportPdf(selected,snapshot,req.principal.organizationName)
+            : format==='csv'?createComplianceCsv(snapshot.records,snapshot.details):await createCompliancePdf(snapshot.records,req.principal.organizationName,new Date().toISOString(),snapshot.details);
+        }else{
+          const records=db.prepare(`SELECT ${selectFields} FROM ai_uses WHERE organization_id=? ORDER BY name`).all(req.principal.organizationId).map(map).map(record=>assessmentSummary(db,req.principal.organizationId,record));
+          const details=reportDetails(req.principal.organizationId);
+          content=format==='csv'?createComplianceCsv(records,details):await createCompliancePdf(records,req.principal.organizationName,new Date().toISOString(),details);
+        }
+        res.type(format==='csv'?'text/csv':'application/pdf').set('Content-Disposition',`attachment; filename="${filename}.${format}"`).send(content);
+      }catch(error){if(error.status)return res.status(error.status).json({error:error.message});throw error;}
+    });
+  }
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API route was not found.' }));
   app.use('/api', (error, _req, res, _next) => { console.error(error.message); res.status(500).json({error:'The request could not be completed. Please try again.'}); });
   return app;

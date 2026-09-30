@@ -378,8 +378,12 @@ test('historical report and exports reconstruct captured edits, submissions and 
   assert.equal((await api(`/api/policies/${policy.id}/review`,auth(cookie,'POST',{reviewDue:'2027-01-01'}))).response.status,200);stamp('policies',policy.id,'2026-01-11');
   const historical=(await api('/api/reports/snapshot?asOfDate=2026-01-10',auth(cookie))).body;
   assert.equal(historical.records[0].name,'Fictional original name');assert.equal(historical.registry.notAssessed,1);assert.equal(historical.actions.outstanding,1);assert.equal(historical.actions.overdue,1);assert.equal(historical.details.policies[0].reviewedAt,null);assert.equal(historical.details.policies[0].reviewDue,'2026-01-10');
+  assert.equal(historical.reports.find(r=>r.id==='assessments').buckets.find(b=>b.label==='Draft').count,1);
+  assert.equal(historical.reports.find(r=>r.id==='policies').buckets.find(b=>b.label==='Due today').count,1);
   const newer=(await api('/api/reports/snapshot?asOfDate=2026-01-11',auth(cookie))).body;
   assert.equal(newer.records[0].name,'Fictional revised name');assert.equal(newer.registry.notAssessed,0);assert.equal(newer.actions.outstanding,0);assert.equal(newer.details.policies[0].reviewDue,'2027-01-01');
+  assert.equal(newer.reports.find(r=>r.id==='assessments').buckets.find(b=>b.label==='Submitted').count,1);
+  assert.equal(newer.reports.find(r=>r.id==='actions').buckets.find(b=>b.label==='Complete').count,1);
   const csv=await api('/api/reports/compliance.csv?asOfDate=2026-01-10',auth(cookie));assert.equal(csv.response.status,200);const text=Buffer.from(csv.body).toString();assert.match(text,/As at 2026-01-10 UTC/);assert.match(text,/Fictional original name/);assert.doesNotMatch(text,/Fictional revised name/);assert.match(text,/Not Started/);
   const pdf=await api('/api/reports/compliance.pdf?asOfDate=2026-01-10',auth(cookie));assert.equal(pdf.response.status,200);assert.equal(Buffer.from(pdf.body).subarray(0,4).toString(),'%PDF');
   assert.equal((await api('/api/reports/snapshot?asOfDate=2025-12-31',auth(cookie))).response.status,400);
@@ -397,4 +401,16 @@ test('mandatory acknowledgement blocks new drafts when no policy is linked',asyn
   assert.equal((await api('/api/governance-configuration',auth(cookie,'PUT',{expectedVersion:config.version,questions:config.questions,customRoles:config.customRoles,workflow:{...config.workflow,mandatoryPolicyReading:true}}))).response.status,200);
   const draft=await api('/api/assessments',auth(cookie,'POST',{aiUseId:record.id}));assert.equal(draft.response.status,409);assert.match(draft.body.error,/no current policy is linked/);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM assessments WHERE organization_id=?').get('no-policy-sme').n,0);
+});
+test('selected report exports validate the view and use scoped historical counts',async()=>{
+  const cookie=await signIn('history@example.test');
+  for(const id of ['registry','assessments','actions','policies','risk','areas']){
+    const csv=await api(`/api/reports/compliance.csv?asOfDate=2026-01-10&report=${id}`,auth(cookie));assert.equal(csv.response.status,200);assert.match(Buffer.from(csv.body).toString(),/2026-01-10 UTC/);
+    const pdf=await api(`/api/reports/compliance.pdf?asOfDate=2026-01-10&report=${id}`,auth(cookie));assert.equal(pdf.response.status,200);assert.equal(Buffer.from(pdf.body).subarray(0,5).toString(),'%PDF-');
+  }
+  const csv=await api('/api/reports/compliance.csv?asOfDate=2026-01-10&report=assessments',auth(cookie));assert.match(Buffer.from(csv.body).toString(),/"Draft","1","100"/);assert.doesNotMatch(Buffer.from(csv.body).toString(),/Fictional historic action/);
+  assert.equal((await api('/api/reports/compliance.csv?report=unknown',auth(cookie))).response.status,400);
+  assert.equal((await api('/api/reports/compliance.pdf?report=registry&report=actions',auth(cookie))).response.status,400);
+  assert.equal((await api('/api/reports/compliance.csv?report=registry',auth(staffCookie))).response.status,403);
+  const other=await api('/api/reports/compliance.csv?report=registry',auth(otherCookie));assert.equal(other.response.status,200);assert.doesNotMatch(Buffer.from(other.body).toString(),/Fictional original name|Fictional revised name/);
 });

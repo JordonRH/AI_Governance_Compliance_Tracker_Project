@@ -83,6 +83,10 @@ For a partial draft use `submit:false` with only answered IDs. Submission requir
 
 Configuration question objects contain `id,label,topic,required`. The four scoring question identifiers must remain present and required. Up to twenty additional boolean evidence questions use `additional-` identifiers; their answers do not alter scores. `businessAreas:[]` means unrestricted applicability. Workflow booleans are `allowLinkedActions`, `mandatoryPolicyReading`, `requireInProgressBeforeCompletion` and `allowReopen`. Scoring-rule payloads and unknown workflow keys are rejected. Save/activation races return 409; retired configurations block new assessments and actions. Existing snapshots remain valid.
 
+The snapshot response also includes a `reports` array with six entries (`registry`, `assessments`, `actions`, `policies`, `risk`, `areas`). Each includes `id`, `title`, `description`, `unit`, `total`, `buckets:[{label,count}]` and `rows`. Counts reconcile to the record rows; fixed status categories include zero counts. Assessment totals include drafts and repeat assessments. Policy totals count the latest captured version of each document; due/overdue status takes precedence over a prior receipt.
+
+Add `report=registry|assessments|actions|policies|risk|areas` to `/reports/compliance.csv` or `/reports/compliance.pdf` with `asOfDate=YYYY-MM-DD` to export that view's summary and records. If `report` is supplied without a date, today's UTC date is used. Invalid report selectors return JSON 400. Omitting `report` preserves the full governance export. All variants require `report:export` and use the authenticated organisation's captured history.
+
 Historical reporting requires captured history. Invalid, future or pre-coverage dates return 400. Capture begins at schema-12 upgrade (or organisation creation thereafter). The dashboard date parameter continues to classify current action due dates; use `/reports/snapshot` for historical reconstruction.
 
 ## PowerShell session example
