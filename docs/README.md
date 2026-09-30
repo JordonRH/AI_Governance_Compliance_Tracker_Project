@@ -7,6 +7,7 @@ Start with the current runbooks below. They describe the checked-in application 
 | Document | Use it for |
 | --- | --- |
 | [Development](project/development.md) | Fresh clone, first Administrator, all npm commands, configuration, tests and troubleshooting |
+| [Fictional testing pack](project/testing-pack.md) | Repeatable test accounts, configuration variants, backups and local catalogue |
 | [User guide](project/user-guide.md) | Every workspace screen, role permissions and fictional-data demonstration |
 | [Operations](project/operations.md) | Start/stop, HTTPS activation/replacement, backups/restores, recovery and upgrades |
 | [Contributor workflow](project/contributing.md) | Change code, verify, commit, push and open a GitHub PR without AI/CLI integrations |
@@ -20,6 +21,8 @@ Start with the current runbooks below. They describe the checked-in application 
 
 These are snapshots; follow current runbooks for commands and GitHub for live issue state.
 
+- [Reports explorer and workflow redesign, 30 September](project/reports-workflow-redesign-2026-09-30.md): six report views, charts, selected exports and the redesigned configuration editor.
+- [Remaining components, 30 September](project/approved-components-2026-09-30.md): user-directed approval assumption, activation, acknowledgements, historical reporting and workflow versions.
 - [Documentation verification](project/documentation-verification-2026-09-27.md): fresh-checkout command checks and their limits.
 - [GitHub reconciliation, 27 September](project/github-reconciliation-2026-09-27.md): per-ticket evidence and disposition at that date.
 - [Ordered capstone delivery, 26 September](project/capstone-delivery-2026-09-26.md): implementation batches, commit references and evidence boundaries.

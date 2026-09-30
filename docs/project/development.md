@@ -192,3 +192,7 @@ Default output is in the terminal; traces/screenshots are under ignored `test-re
 | Windows test output locked | Close viewers/editors on output artifacts and rerun; keep personal files out of disposable output |
 
 For backups, restore, emergency admin access, HTTPS activation/rollback and upgrades, follow [operations](operations.md). For editing code and opening PRs, follow [contributing](contributing.md).
+
+## Optional fictional testing pack
+
+After initializing a local demonstration organisation, use the [testing pack instructions](testing-pack.md) to create 18 fictional accounts and eight saved configuration variants with `npm.cmd run testing:seed -- --organization-id <existing-id>`. Supply the shared test password through `AITRACE_ACCOUNT_PASSWORD`; no password is stored in the repository or generated catalogue. The command backs up the database and preserves active configuration and existing accounts.
