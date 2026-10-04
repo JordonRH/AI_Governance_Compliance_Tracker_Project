@@ -380,6 +380,7 @@ test('historical report and exports reconstruct captured edits, submissions and 
   assert.equal(historical.records[0].name,'Fictional original name');assert.equal(historical.registry.notAssessed,1);assert.equal(historical.actions.outstanding,1);assert.equal(historical.actions.overdue,1);assert.equal(historical.details.policies[0].reviewedAt,null);assert.equal(historical.details.policies[0].reviewDue,'2026-01-10');
   assert.equal(historical.reports.find(r=>r.id==='assessments').buckets.find(b=>b.label==='Draft').count,1);
   assert.equal(historical.reports.find(r=>r.id==='policies').buckets.find(b=>b.label==='Due today').count,1);
+  const period=(await api('/api/reports/snapshot?fromDate=2026-01-10&toDate=2026-01-11',auth(cookie))).body;assert.equal(period.period.fromDate,'2026-01-10');assert.equal(period.period.toDate,'2026-01-11');assert.equal(period.period.reports.find(r=>r.id==='actions').change,0);assert.equal((await api('/api/reports/snapshot?fromDate=2026-01-11&toDate=2026-01-10',auth(cookie))).response.status,400);
   const newer=(await api('/api/reports/snapshot?asOfDate=2026-01-11',auth(cookie))).body;
   assert.equal(newer.records[0].name,'Fictional revised name');assert.equal(newer.registry.notAssessed,0);assert.equal(newer.actions.outstanding,0);assert.equal(newer.details.policies[0].reviewDue,'2027-01-01');
   assert.equal(newer.reports.find(r=>r.id==='assessments').buckets.find(b=>b.label==='Submitted').count,1);

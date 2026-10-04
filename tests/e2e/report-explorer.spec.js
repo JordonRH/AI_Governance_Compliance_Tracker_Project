@@ -10,6 +10,7 @@ test('report views reconcile to the snapshot, switch charts and filter their und
     const response=await page.request.post('/api/registry',{data:{name:`Fictional chart example ${index}`,owner:'Fictional reporting team',businessArea:index===0?'Finance':'Operations',purpose:'Fictional analytics example.',dataDescription:'Synthetic data only.',dataSensitivity:'Public',approvalStatus:status}});expect(response.status()).toBe(201);
   }
   await page.getByRole('navigation').getByRole('button',{name:'Reports',exact:true}).click();
+  const today=new Date().toISOString().slice(0,10);await page.getByLabel('From date').fill(today);await page.getByLabel('To date').fill(today);await page.getByRole('button',{name:'Refresh view'}).click();await expect(page.getByText(new RegExp(`Showing|Period \${today}`)).first()).toBeVisible();
   const snapshot=await (await page.request.get('/api/reports/snapshot')).json();
   await expect(page.getByRole('group',{name:'Choose a report'}).getByRole('button')).toHaveCount(6);
   for(const report of snapshot.reports){

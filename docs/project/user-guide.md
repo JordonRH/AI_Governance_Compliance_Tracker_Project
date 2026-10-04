@@ -31,7 +31,7 @@ The table describes the fixed-role baseline. Accounts can add bounded user capab
 4. Open **Actions**, select the AI use, optionally link a submitted assessment for that same use, name the action, assign an active account and set a due date. **Edit action** updates progress; **View history** shows changes. Staff see their assigned actions; a manager records status changes.
 5. Open **Policies** to upload a PDF or UTF-8 text file up to 1 MiB. Choose checklist topics, reviewer and review date. To replace a policy, choose it under **Version of**; old versions remain downloadable. **Record review** schedules the next review date.
 6. Open **Notifications** for your reminders. The server checks automatically (default every minute). Managers can choose **Check reminders now**. Administrators can change lead/repeat days or disable delivery. Repeated checks do not duplicate the same reminder. Mark messages as read after reviewing them.
-7. Open **Overview** to review assessment outcomes, outstanding/overdue actions and policy reviews. Follow links into the relevant workflow. Use **Reports** for a historical date and matching PDF/CSV exports. Registry exports continue to show current records.
+7. Open **Overview** to review assessment outcomes, outstanding/overdue actions and policy reviews. Follow links into the relevant workflow. Use **Reports** for a historical date or a from/to period. Period reports compare the end-of-day totals and category changes between the selected dates; the detailed records show the period end. Matching PDF/CSV exports remain available. Registry exports continue to show current records.
 
 ## Disclose unregistered AI use
 

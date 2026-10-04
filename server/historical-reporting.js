@@ -27,3 +27,12 @@ export function historicalReport(db,organizationId,date){
   const reports=buildReportAnalytics({records,assessments:entities('assessments'),actions,policies:entities('policies'),date});
   return {asOfDate:date,coverageStart:coverage,records,details,reports,registry:{total:records.length,notAssessed:records.filter(row=>row.assessmentStatus==='Not assessed').length},actions:{status:'available',outstanding:actions.filter(row=>row.status!=='Complete').length,overdue:actions.filter(row=>row.status!=='Complete'&&row.dueDate<date).length}};
 }
+
+export function historicalPeriodReport(db,organizationId,fromDate,toDate){
+  const fail=message=>{throw Object.assign(new Error(message),{status:400})};
+  if(!isDateOnly(fromDate)||!isDateOnly(toDate))fail('Choose valid report start and end dates.');
+  if(fromDate>toDate)fail('The report start date must be on or before the end date.');
+  const start=historicalReport(db,organizationId,fromDate),end=historicalReport(db,organizationId,toDate);
+  const period={fromDate,toDate,reports:end.reports.map(report=>{const initial=start.reports.find(item=>item.id===report.id);return {id:report.id,title:report.title,totalAtStart:initial?.total??0,totalAtEnd:report.total,change:report.total-(initial?.total??0),buckets:report.buckets.map(bucket=>{const before=initial?.buckets.find(item=>item.label===bucket.label)?.count??0;return {label:bucket.label,countAtStart:before,countAtEnd:bucket.count,change:bucket.count-before}})}})};
+  return {...end,period};
+}

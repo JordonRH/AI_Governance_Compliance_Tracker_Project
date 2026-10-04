@@ -87,6 +87,8 @@ The snapshot response also includes a `reports` array with six entries (`registr
 
 Add `report=registry|assessments|actions|policies|risk|areas` to `/reports/compliance.csv` or `/reports/compliance.pdf` with `asOfDate=YYYY-MM-DD` to export that view's summary and records. If `report` is supplied without a date, today's UTC date is used. Invalid report selectors return JSON 400. Omitting `report` preserves the full governance export. All variants require `report:export` and use the authenticated organisation's captured history.
 
+Snapshot reports also accept `fromDate` and `toDate` together. The response retains the end-date snapshot and adds `period:{fromDate,toDate,reports}`; each period report includes start/end totals, change and per-category start/end counts/change. The start date must not follow the end date, and both dates must be within capture coverage.
+
 Historical reporting requires captured history. Invalid, future or pre-coverage dates return 400. Capture begins at schema-12 upgrade (or organisation creation thereafter). The dashboard date parameter continues to classify current action due dates; use `/reports/snapshot` for historical reconstruction.
 
 ## PowerShell session example

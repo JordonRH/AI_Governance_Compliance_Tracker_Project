@@ -1,6 +1,6 @@
 import {selectReport} from './domain/report-analytics.js';
 import {createReportCsv,createReportPdf} from './report-exports.js';
-import {historicalReport} from './historical-reporting.js';
+import {historicalReport,historicalPeriodReport} from './historical-reporting.js';
 import {registerGovernanceConfiguration,activeConfiguration,defaultWorkflow} from './governance-config.js';
 import {registerCertificates} from './certificates.js';
 import {registerNotifications} from './notifications.js';
@@ -285,7 +285,7 @@ export function createApp(db, http, {certificates} = {}) {
     return {assessments,actions,policies};
   }
   app.get('/api/reports/snapshot',requirePermission('report:export'),(req,res)=>{
-    try{res.json(historicalReport(db,req.principal.organizationId,req.query.asOfDate||new Date().toISOString().slice(0,10)))}catch(error){if(error.status)return res.status(error.status).json({error:error.message});throw error;}
+    try{const today=new Date().toISOString().slice(0,10);res.json(req.query.fromDate||req.query.toDate?historicalPeriodReport(db,req.principal.organizationId,req.query.fromDate||req.query.toDate,req.query.toDate||req.query.fromDate):historicalReport(db,req.principal.organizationId,req.query.asOfDate||today))}catch(error){if(error.status)return res.status(error.status).json({error:error.message});throw error;}
   });
   for(const format of ['csv','pdf']){
     app.get(`/api/reports/compliance.${format}`,requirePermission('report:export'),async(req,res)=>{
