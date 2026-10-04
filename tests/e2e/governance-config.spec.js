@@ -57,7 +57,7 @@ test('saved configuration activation enforces policy acknowledgements and preser
 test('reports use one selected date for the view and CSV/PDF exports and reject unavailable history',async({page})=>{
   await page.goto('/');await page.getByLabel('Login').fill('admin@example.test');await page.getByLabel('Password').fill('correct horse battery');await page.getByRole('button',{name:'Sign in',exact:true}).click();
   await page.getByRole('navigation').getByRole('button',{name:'Reports',exact:true}).click();await expect(page.getByText(/^History captured from/)).toBeVisible();
-  await page.getByLabel('As at date').fill('2020-01-01');await page.getByRole('button',{name:'Refresh view'}).click();await expect(page.getByRole('alert')).toContainText('earlier states were not captured');await expect(page.getByRole('button',{name:'Export CSV'})).toBeDisabled();
-  const today=new Date().toISOString().slice(0,10);await page.getByLabel('As at date').fill(today);await page.getByRole('button',{name:'Refresh view'}).click();await expect(page.getByText(`Showing ${today} (UTC).`)).toBeVisible();
+  await page.getByLabel('To date').fill('2020-01-01');await page.getByRole('button',{name:'Refresh view'}).click();await expect(page.getByRole('alert')).toContainText('earlier states were not captured');await expect(page.getByRole('button',{name:'Export CSV'})).toBeDisabled();
+  const today=new Date().toISOString().slice(0,10);await page.getByLabel('To date').fill(today);await page.getByRole('button',{name:'Refresh view'}).click();await expect(page.getByText(`Showing ${today} (UTC).`)).toBeVisible();
   for(const format of ['CSV','PDF']){const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:`Export ${format}`,exact:true}).click();const download=await downloadPromise;expect(download.suggestedFilename()).toBe(`aitrace-registry-${today}.${format.toLowerCase()}`);expect(await download.failure()).toBeNull();}
 });

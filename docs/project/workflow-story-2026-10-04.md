@@ -19,4 +19,4 @@ This follows the useful shape of NIST?s Govern, Map, Measure and Manage function
 - Make the report period view compare start and end totals, status movements and newly overdue work.
 - Keep the showcase narrative on the same sequence: register one fictional use, assess it, read one policy, submit, generate follow-up, complete evidence, then show the period report.
 
-The workflow builder, reusable policy reads and richer story walkthroughs remain future implementation work unless explicitly added to the active delivery scope.
+The bounded workflow builder is now implemented for assessment submission automation: administrators can select the submission event, optionally match the synthetic result label, create one follow-up action, and set a due offset. Each generated action stores the configuration version and automation rule id in its history. Reusable policy reads and richer story walkthroughs remain future implementation work unless explicitly added to the active delivery scope.

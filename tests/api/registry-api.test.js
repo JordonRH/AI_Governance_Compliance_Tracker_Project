@@ -1,4 +1,4 @@
-import {createCertificateStore,readTlsBundle} from '../../server/certificates.js';
+﻿import {createCertificateStore,readTlsBundle} from '../../server/certificates.js';
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { createServer, request as httpRequest } from 'node:http';
@@ -312,6 +312,17 @@ test('draft activation, retirement, applicability and additional requirements pr
     assert.equal((await transitionConfiguration(draft.version,'activated')).response.status,200);
     assert.ok((await api('/api/governance-configuration',auth(adminCookie))).body.events.some(e=>e.action==='retired'&&e.reference.includes('assumption')));
   }finally{await configure({questions:baseline.questions,businessAreas:baseline.businessAreas||[],customRoles:baseline.customRoles,workflow:baseline.workflow});}
+});
+
+test('bounded submission automation creates one version-pinned follow-up action',async()=>{
+ const baseline=(await api('/api/governance-configuration',auth(adminCookie))).body,aiUseId=(await api('/api/registry',auth(adminCookie,'POST',{...valid,name:'Fictional automation use'}))).body.id;
+ try{
+  const rule={id:'automation-test-submit',name:'Test submitted high result',event:'assessment.submitted',outcome:'',title:'Fictional automated review action',dueDays:14};
+  const configured=await configure({automationRules:[rule]});
+  const check=(await api('/api/governance-configuration',auth(adminCookie))).body;assert.equal(check.automationRules.length,1);const assessment=(await api('/api/assessments',auth(adminCookie,'POST',{aiUseId}))).body;
+  assert.equal((await api(`/api/assessments/${assessment.id}`,auth(adminCookie,'PUT',{expectedRevision:1,submit:true,responses:completeResponses}))).response.status,200);
+  const actions=(await api('/api/actions',auth(adminCookie))).body.actions.filter(action=>action.assessmentId===assessment.id);assert.equal(actions.length,1);assert.equal(actions[0].title,rule.title);assert.equal(actions[0].history[0].automationRuleId,rule.id);assert.equal(actions[0].workflowConfigurationVersion,configured.version);
+ }finally{await configure({automationRules:baseline.automationRules||[]});}
 });
 
 test('mandatory policy receipts bind the submitting user to exact draft policy versions',async()=>{

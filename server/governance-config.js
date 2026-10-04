@@ -2,7 +2,8 @@ import {demoDefinition} from './assessment-definition.js';
 
 export const capabilities=['registry:create','registry:update','assessment:review','action:manage','report:export'];
 export const defaultWorkflow=()=>({allowLinkedActions:true,mandatoryPolicyReading:false,requireInProgressBeforeCompletion:false,allowReopen:true});
-export const defaults=()=>({questions:demoDefinition('All').questions.map(({id,label,topic})=>({id,label,topic,required:true})),businessAreas:[],customRoles:[],workflow:defaultWorkflow()});
+export const defaultAutomationRules=()=>[];
+export const defaults=()=>({questions:demoDefinition('All').questions.map(({id,label,topic})=>({id,label,topic,required:true})),businessAreas:[],customRoles:[],workflow:defaultWorkflow(),automationRules:defaultAutomationRules()});
 const decode=row=>({version:row.version,...JSON.parse(row.configuration_json)});
 export function currentConfiguration(db,organizationId){
   const row=db.prepare('SELECT * FROM governance_configurations WHERE organization_id=? ORDER BY version DESC LIMIT 1').get(organizationId);
@@ -33,7 +34,7 @@ export function assessmentDefinition(db,organizationId,category){
 const validText=(value,max)=>typeof value==='string'&&value.trim().length>0&&value.length<=max;
 function validate(input){
   const base=defaults();
-  if(!input||Object.keys(input).some(k=>!['expectedVersion','questions','businessAreas','customRoles','workflow','activate','approvalReference','expectedLifecycleRevision'].includes(k)))return false;
+  if(!input||Object.keys(input).some(k=>!['expectedVersion','questions','businessAreas','customRoles','workflow','automationRules','activate','approvalReference','expectedLifecycleRevision'].includes(k)))return false;
   if(input.expectedLifecycleRevision!==undefined&&!Number.isSafeInteger(input.expectedLifecycleRevision))return false;
   if(input.activate!==undefined&&typeof input.activate!=='boolean')return false;
   if(input.approvalReference!==undefined&&!validText(input.approvalReference,500))return false;
@@ -42,6 +43,7 @@ function validate(input){
   if(input.questions.some(q=>!q||Object.keys(q).some(k=>!['id','label','topic','required'].includes(k))||!validText(q.label,240)||(q.topic!==undefined&&q.topic!==''&&!validText(q.topic,240))||(q.required!==undefined&&typeof q.required!=='boolean')||(!base.questions.some(b=>b.id===q.id)&&!(typeof q.id==='string'&&/^additional-[a-z0-9-]{1,40}$/.test(q.id)))))return false;
   if(input.businessAreas!==undefined&&(!Array.isArray(input.businessAreas)||input.businessAreas.length>40||new Set(input.businessAreas).size!==input.businessAreas.length||input.businessAreas.some(area=>!validText(area,120)||area!==area.trim())))return false;
   if(!Array.isArray(input.customRoles)||input.customRoles.length>12||input.customRoles.some(r=>!r||Object.keys(r).some(k=>!['id','name','permissions'].includes(k))||typeof r.id!=='string'||!/^custom-[a-z0-9-]{1,40}$/.test(r.id)||!validText(r.name,80)||!Array.isArray(r.permissions)||r.permissions.some(p=>!capabilities.includes(p))||new Set(r.permissions).size!==r.permissions.length)||new Set(input.customRoles.map(r=>r.id)).size!==input.customRoles.length)return false;
+  if(input.automationRules!==undefined&&(!Array.isArray(input.automationRules)||input.automationRules.length>12||input.automationRules.some(rule=>!rule||Object.keys(rule).some(k=>!['id','name','event','outcome','title','dueDays'].includes(k))||typeof rule.id!=='string'||!/^automation-[a-z0-9-]{1,40}$/.test(rule.id)||!validText(rule.name,100)||rule.event!=='assessment.submitted'||(rule.outcome!==undefined&&rule.outcome!==''&&!['High (demo)','Medium (demo)','Low (demo)'].includes(rule.outcome))||!validText(rule.title,200)||!Number.isInteger(rule.dueDays)||rule.dueDays<0||rule.dueDays>365)||new Set(input.automationRules.map(r=>r.id)).size!==input.automationRules.length))return false;
   return input.workflow&&typeof input.workflow==='object'&&!Array.isArray(input.workflow)&&Object.keys(input.workflow).every(k=>Object.hasOwn(defaultWorkflow(),k))&&['allowLinkedActions','mandatoryPolicyReading'].every(k=>typeof input.workflow[k]==='boolean')&&['requireInProgressBeforeCompletion','allowReopen'].every(k=>input.workflow[k]===undefined||typeof input.workflow[k]==='boolean');
 }
 function event(db,principal,version,action,reference){
@@ -67,7 +69,7 @@ export function registerGovernanceConfiguration(app,db,requirePermission){
       const questions=input.questions.map(q=>({...q,label:q.label.trim(),topic:q.topic?.trim()||base.questions.find(b=>b.id===q.id)?.topic||'Additional governance evidence',required:q.required!==false}));
       definition.version=String(previous.version+2);definition.configurationVersion=previous.version+1;
       definition.questions=questions.map(q=>({...q,type:'boolean'}));
-      const configuration={questions,businessAreas:input.businessAreas||[],customRoles:input.customRoles,workflow:{...defaultWorkflow(),...input.workflow},assessmentDefinition:definition},now=new Date().toISOString();
+      const configuration={questions,businessAreas:input.businessAreas||[],customRoles:input.customRoles,workflow:{...defaultWorkflow(),...input.workflow},automationRules:input.automationRules||[],assessmentDefinition:definition},now=new Date().toISOString();
       db.prepare('INSERT INTO governance_configurations VALUES (?,?,?,?,?)').run(req.principal.organizationId,previous.version+1,JSON.stringify(configuration),req.principal.accountId,now);
       if(input.activate!==false)event(db,req.principal,previous.version+1,'activated',input.approvalReference||'Administrator publication; synthetic scoring remains unchanged.');
       db.exec('COMMIT');res.json({version:previous.version+1,...configuration});

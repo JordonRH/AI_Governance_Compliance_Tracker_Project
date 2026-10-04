@@ -116,3 +116,7 @@ try {
 ```
 
 For HTTPS, first establish certificate trust using the operations runbook and change the base URL. Do not disable certificate verification to make an integration pass. For exact executable payload examples across the workflow, read `tests/api/registry-api.test.js`; run it with `node --test tests/api/registry-api.test.js` on disposable test data. The app UI remains the supported workflow for ordinary users.
+
+### Submission automation
+
+The versioned governance configuration may include up to 12 bounded `automationRules`. Each rule has an `id`, `name`, `event` (`assessment.submitted`), optional synthetic `outcome` (`High (demo)`, `Medium (demo)`, or `Low (demo)`), action `title`, and integer `dueDays` from 0 to 365. On a matching submission, AITrace creates one follow-up action and records the configuration version and rule id in the action history. Arbitrary scripts, unrestricted events, and cross-organisation references are rejected by server validation.

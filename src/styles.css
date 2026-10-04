@@ -112,3 +112,4 @@
 .report-swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
 
 @media(min-width:761px){.account-menu:hover .account-menu-panel,.account-menu:focus-within .account-menu-panel{display:grid}.account-menu:hover>summary{background:var(--soft)}}
+.automation-builder{border-top:1px solid var(--border);margin-top:30px;padding-top:26px}.automation-builder>.section-heading{align-items:flex-start}.automation-card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;background:var(--canvas)}.automation-card legend{font-weight:650;padding:0 8px}.automation-card button:last-child{grid-column:1/-1;justify-self:start}@media(max-width:760px){.automation-card{grid-template-columns:1fr}}

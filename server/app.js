@@ -210,7 +210,7 @@ export function createApp(db, http, {certificates} = {}) {
     res.json({total:records.length,unassessed:records.filter(r=>r.assessmentStatus==='Not assessed').length,byBusinessArea});
   });
 
-  const actionFromRow = row => ({ id:row.id, ownerAccountId:row.owner_account_id, aiUseId:row.ai_use_id, ...(row.assessment_id?{assessmentId:row.assessment_id}:{}), title:row.title, owner:row.owner, dueDate:row.due_date, status:row.status, version:row.version, createdAt:row.created_at, updatedAt:row.updated_at, completedAt:row.completed_at, history:JSON.parse(row.history_json) });
+  const actionFromRow = row => ({ id:row.id, ownerAccountId:row.owner_account_id, aiUseId:row.ai_use_id, ...(row.assessment_id?{assessmentId:row.assessment_id}:{}), title:row.title, owner:row.owner, dueDate:row.due_date, status:row.status, version:row.version, createdAt:row.created_at, updatedAt:row.updated_at, completedAt:row.completed_at, history:JSON.parse(row.history_json), ...(JSON.parse(row.history_json)[0]?.workflowConfigurationVersion ? {workflowConfigurationVersion:JSON.parse(row.history_json)[0].workflowConfigurationVersion} : {}) });
 
   app.get('/api/actions', requirePermission('registry:read'), (req,res)=>{
     const rows=db.prepare('SELECT * FROM governance_actions WHERE organization_id=? ORDER BY due_date,id').all(req.principal.organizationId);
