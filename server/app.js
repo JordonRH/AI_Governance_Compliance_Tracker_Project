@@ -56,7 +56,7 @@ export function createApp(db, http, {certificates} = {}) {
     if (!req.headers.origin) return next();
     try {
       const origin = new URL(req.headers.origin);
-      if (origin.protocol === (http.secure?'https:':'http:') && origin.host.toLowerCase() === req.headers.host.toLowerCase() && http.allowedHostnames.includes(origin.hostname.toLowerCase())) return next();
+      if ((origin.protocol==='https:' || (!http.secure && origin.protocol==='http:')) && origin.host.toLowerCase() === req.headers.host.toLowerCase() && http.allowedHostnames.includes(origin.hostname.toLowerCase())) return next();
     } catch {}
     res.status(403).json({ error: 'Origin is not allowed.' });
   });
