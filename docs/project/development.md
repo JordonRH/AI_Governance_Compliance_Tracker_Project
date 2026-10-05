@@ -118,7 +118,7 @@ For bootstrap with `.env`, set the password using the hidden prompt above, repla
 | --- | --- | --- |
 | PORT | 5173 | Integer 1-65535; normally use an available unprivileged port |
 | DATABASE_PATH | data/aitrace.sqlite | SQLite path; absolute recommended for operational data |
-| AITRACE_BIND_HOST | 127.0.0.1 | Only this bind address is supported |
+| AITRACE_BIND_HOST | 127.0.0.1 | Only this bind address is supported |`r`n| AITRACE_ALLOWED_HOSTNAMES | 127.0.0.1,localhost | Comma-separated hostnames accepted in the HTTP Host header; add the Tailscale Serve hostname when using a tailnet URL |
 | AITRACE_REQUEST_BODY_LIMIT_BYTES | 32768 | Integer 1024-1048576; normal JSON limit |
 | AITRACE_REMINDER_INTERVAL_MS | 60000 | Integer 1000-86400000; scheduler interval |
 | AITRACE_LOGIN_MAX_ATTEMPTS | 10 | Integer 1-100; login/password attempt threshold |
