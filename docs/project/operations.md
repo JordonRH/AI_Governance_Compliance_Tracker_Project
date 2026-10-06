@@ -122,3 +122,15 @@ Review server-terminal errors and the Notifications page when delivery is missin
 6. If rollback is needed, use the recorded prior code version and a protected copy of its matching pre-upgrade database. Do not force old code to open a newer schema or overwrite the only backup.
 
 A checkout/update does not carry credentials, local data, browser installations or certificate trust from another developer's machine. Those are explicit local setup tasks.
+
+## Render deployment
+
+AITrace can run as a Render Node web service. Use `render.yaml` or configure these values in the Render dashboard:
+
+- Build command: `npm ci && npm run build`
+- Start command: `npm start`
+- Health check path: `/api/health`
+- `AITRACE_BIND_HOST=0.0.0.0`
+- `DATABASE_PATH=/var/data/aitrace.sqlite`
+
+Attach a persistent disk mounted at `/var/data`; Render filesystems are otherwise ephemeral. Render supplies `RENDER_EXTERNAL_HOSTNAME`, which AITrace automatically adds to its allowed hostnames. Keep the service behind Render HTTPS and do not configure local Tailscale settings for this deployment. Create the first administrator through the supported account bootstrap process, then verify login, registry persistence, assessment submission, policy uploads, action history, reports, and restart recovery.
