@@ -16,6 +16,13 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const config = loadConfig({ rootDir: root });
 if (config.production && !existsSync(resolve(config.paths.distribution, 'index.html'))) throw new Error('Run npm run build before npm run start.');
 const db = openDatabase(config.paths.database);
+const bootstrapPassword=process.env.AITRACE_BOOTSTRAP_PASSWORD;
+const bootstrapLogin=process.env.AITRACE_BOOTSTRAP_LOGIN;
+if(bootstrapPassword||bootstrapLogin){
+  const required={login:bootstrapLogin,password:bootstrapPassword,displayName:process.env.AITRACE_BOOTSTRAP_DISPLAY_NAME,organizationId:process.env.AITRACE_BOOTSTRAP_ORGANIZATION_ID,organizationName:process.env.AITRACE_BOOTSTRAP_ORGANIZATION_NAME};
+  if(Object.values(required).some(value=>!value)) throw new Error('All AITRACE_BOOTSTRAP_* values are required together.');
+  if(db.prepare('SELECT 1 FROM accounts LIMIT 1').get()===undefined) await createAccount(db,{...required,role:'administrator'});
+}
 const tlsPair=config.tls?(config.tls.bundle?readTlsBundle(config.tls.bundle):{cert:readFileSync(config.tls.cert,'utf8'),key:readFileSync(config.tls.key,'utf8')}):null;
 const certificates=createCertificateStore(config.certificatesDirectory,{secure:config.http.secure,activeFingerprint:tlsPair?validateCertificatePair(tlsPair).fingerprint:null});
 const app = createApp(db, config.http,{certificates});
