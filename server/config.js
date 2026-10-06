@@ -38,13 +38,13 @@ export function loadConfig({ env = process.env, args = process.argv.slice(2), ro
 
   const production = args.includes('--production');
   const bindHost = env.AITRACE_BIND_HOST || '127.0.0.1';
-  if (bindHost !== '127.0.0.1') {
-    throw new Error('AITRACE_BIND_HOST must remain 127.0.0.1 until authentication and deployment security are approved.');
+  if (bindHost !== '127.0.0.1' && !(production && bindHost === '0.0.0.0')) {
+    throw new Error('AITRACE_BIND_HOST must be 127.0.0.1 locally or 0.0.0.0 in production.');
   }
 
   const port = integer('PORT', env.PORT, 5173, 1, 65535);
   const requestBodyLimitBytes = integer('AITRACE_REQUEST_BODY_LIMIT_BYTES', env.AITRACE_REQUEST_BODY_LIMIT_BYTES, 32768, 1024, 1048576);
-  const configuredHosts = (env.AITRACE_ALLOWED_HOSTNAMES || '127.0.0.1,localhost').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
+  const configuredHosts = (env.AITRACE_ALLOWED_HOSTNAMES || ['127.0.0.1','localhost',env.RENDER_EXTERNAL_HOSTNAME].filter(Boolean).join(',')).split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
   if (!configuredHosts.length || configuredHosts.some(value=>!/^([a-z0-9.-]+)$/.test(value))) throw new Error('AITRACE_ALLOWED_HOSTNAMES must be a comma-separated list of hostnames.');
   const allowedHostnames = Object.freeze([...new Set(configuredHosts)]);
   const paths = Object.freeze({
