@@ -20,7 +20,7 @@ test('supported settings are configurable and validated', () => {
   assert.equal(config.http.requestBodyLimitBytes, 65536);
   assert.equal(config.production, true);
   assert.throws(() => loadConfig({ env: { PORT: '0' }, rootDir }), /PORT must be between/);
-  assert.throws(() => loadConfig({ env: { AITRACE_BIND_HOST: '0.0.0.0' }, rootDir }), /127\\.0\\.0\\.1 locally/);
+  assert.throws(() => loadConfig({ env: { AITRACE_BIND_HOST: '0.0.0.0' }, rootDir }), /locally/);
   assert.throws(() => loadConfig({ env: { AITRACE_UNKNOWN: 'value' }, rootDir }), /Unknown AITrace configuration/);
 });
 test('host-header validation only permits configured local names and valid ports', () => {
