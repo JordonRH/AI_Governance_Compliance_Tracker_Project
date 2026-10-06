@@ -1,3 +1,4 @@
+import {installHistory} from './history.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -12,7 +13,7 @@ export function openDatabase(filename) {
     CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY);
   `);
   const version = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version ?? 0;
-  if (version > 10) { db.close(); throw new Error('Database schema is newer than this application.'); }
+  if (version > 12) { db.close(); throw new Error('Database schema is newer than this application.'); }
   if (version === 0) {
     db.exec(`
       BEGIN;
@@ -197,6 +198,24 @@ export function openDatabase(filename) {
     db.exec(`BEGIN;
       ALTER TABLE accounts ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0 CHECK(must_change_password IN (0,1));
       INSERT INTO schema_migrations VALUES (10); COMMIT;`);
+  }
+  if (db.prepare('SELECT MAX(version) version FROM schema_migrations').get().version < 11) {
+    db.exec(`BEGIN;
+      CREATE TABLE governance_configurations (organization_id TEXT NOT NULL REFERENCES organizations(id),version INTEGER NOT NULL,configuration_json TEXT NOT NULL,actor_id TEXT NOT NULL REFERENCES accounts(id),created_at TEXT NOT NULL,PRIMARY KEY(organization_id,version)) STRICT;
+      ALTER TABLE accounts ADD COLUMN capabilities_json TEXT NOT NULL DEFAULT '[]';
+      ALTER TABLE accounts ADD COLUMN custom_role_json TEXT;
+      INSERT INTO schema_migrations VALUES (11); COMMIT;`);
+  }
+  if (db.prepare('SELECT MAX(version) version FROM schema_migrations').get().version < 12) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.exec(`CREATE TABLE configuration_events (id INTEGER PRIMARY KEY,organization_id TEXT NOT NULL REFERENCES organizations(id),version INTEGER NOT NULL,action TEXT NOT NULL CHECK(action IN ('activated','retired')),actor_id TEXT NOT NULL REFERENCES accounts(id),reference TEXT NOT NULL,created_at TEXT NOT NULL) STRICT;
+        INSERT INTO configuration_events(organization_id,version,action,actor_id,reference,created_at)
+        SELECT c.organization_id,c.version,'activated',c.actor_id,'Previously active demonstration configuration',c.created_at FROM governance_configurations c WHERE version=(SELECT MAX(version) FROM governance_configurations v WHERE v.organization_id=c.organization_id);
+        CREATE TABLE policy_acknowledgements (id INTEGER PRIMARY KEY,organization_id TEXT NOT NULL REFERENCES organizations(id),assessment_id TEXT NOT NULL REFERENCES assessments(id),policy_id TEXT NOT NULL REFERENCES policies(id),account_id TEXT NOT NULL REFERENCES accounts(id),sha256 TEXT NOT NULL,acknowledged_at TEXT NOT NULL,UNIQUE(assessment_id,policy_id,account_id)) STRICT;`);
+      installHistory(db);
+      db.exec('INSERT INTO schema_migrations VALUES (12); COMMIT');
+    } catch(error) { db.exec('ROLLBACK'); throw error; }
   }
   return db;
 }

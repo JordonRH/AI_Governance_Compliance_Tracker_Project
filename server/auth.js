@@ -1,6 +1,8 @@
 import { createHash, randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 
+import {capabilities,activeConfiguration} from './governance-config.js';
+
 const scrypt = promisify(scryptCallback);
 const roles = Object.freeze(['administrator', 'compliance_officer', 'staff_user']);
 const roleLabels = Object.freeze({
@@ -33,6 +35,9 @@ function parseCookies(value) {
   }
   return cookies;
 }
+export function effectivePermissions(row) {
+  return [...new Set([...permissions[row.role],...JSON.parse(row.capabilities_json||'[]'),...(JSON.parse(row.custom_role_json||'null')?.permissions||[])])].sort();
+}
 function publicPrincipal(row) {
   return Object.freeze({
     accountId: row.account_id,
@@ -42,7 +47,7 @@ function publicPrincipal(row) {
     role: row.role,
     roleLabel: roleLabels[row.role],
     mustChangePassword: Boolean(row.must_change_password),
-    permissions: [...permissions[row.role]].sort()
+    permissions: effectivePermissions(row)
   });
 }
 
@@ -85,7 +90,7 @@ export function resolveRequestPrincipal(db, request, now = new Date()) {
   const token = parseCookies(request.headers.cookie)[cookieName];
   if (!token) return null;
   const current = now.toISOString();
-  const row = db.prepare(`SELECT s.id session_id, s.expires_at, a.id account_id, a.organization_id, a.display_name, a.role, a.status, a.must_change_password, o.name organization_name
+  const row = db.prepare(`SELECT s.id session_id, s.expires_at, a.id account_id, a.organization_id, a.display_name, a.role, a.status, a.must_change_password,a.capabilities_json,a.custom_role_json, o.name organization_name
     FROM sessions s JOIN accounts a ON a.id=s.account_id JOIN organizations o ON o.id=a.organization_id
     WHERE s.token_hash=? AND s.revoked_at IS NULL`).get(tokenHash(token));
   if (!row || row.status !== 'active' || row.expires_at <= current || !permissions[row.role]) return null;
@@ -98,7 +103,7 @@ export function revokeRequestSession(db, request, now = new Date().toISOString()
   if (token) db.prepare('UPDATE sessions SET revoked_at=? WHERE token_hash=? AND revoked_at IS NULL').run(now, tokenHash(token));
 }
 export function hasPermission(principal, permission) {
-  return Boolean(principal && permissions[principal.role]?.has(permission));
+  return Boolean(principal && (principal.permissions ? principal.permissions.includes(permission) : permissions[principal.role]?.has(permission)));
 }
 export function sessionCookie(token, expiresAt, secure = false) {
   return `${cookieName}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Expires=${new Date(expiresAt).toUTCString()}${secure ? '; Secure' : ''}`;
@@ -125,6 +130,8 @@ export async function manageAccount(db, principal, accountId, change) {
     salt=randomBytes(16); hash=await derive(change.password,salt);
   } else if (change.kind==='access') {
     if (!roles.includes(change.role) || !['active','disabled'].includes(change.status)) fail('Choose a valid role and account status.');
+    if(change.capabilities!==undefined&&(!Array.isArray(change.capabilities)||change.capabilities.some(p=>!capabilities.includes(p))||new Set(change.capabilities).size!==change.capabilities.length))fail('Choose supported capabilities.');
+    if(change.customRoleId!==undefined&&change.customRoleId!==''&&!(activeConfiguration(db,principal.organizationId)||{version:0,customRoles:[]}).customRoles.some(r=>r.id===change.customRoleId))fail('Choose an existing custom role.');
   } else fail('Unknown account change.');
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -139,6 +146,17 @@ export async function manageAccount(db, principal, accountId, change) {
         if (count<=1) fail('Keep at least one active administrator.');
       }
       db.prepare('UPDATE accounts SET role=?,status=?,updated_at=? WHERE id=? AND organization_id=?').run(change.role,change.status,now,accountId,principal.organizationId);
+    }
+    if(change.kind==='access'){
+      if(change.capabilities!==undefined)db.prepare('UPDATE accounts SET capabilities_json=? WHERE id=?').run(JSON.stringify(change.capabilities),accountId);
+      if(change.customRoleId!==undefined){
+        const config=(activeConfiguration(db,principal.organizationId)||{version:0,customRoles:[]}),role=config.customRoles.find(r=>r.id===change.customRoleId);
+        db.prepare('UPDATE accounts SET custom_role_json=? WHERE id=?').run(role?JSON.stringify({...role,configurationVersion:config.version}):null,accountId);
+      }
+      if(change.capabilities!==undefined||change.customRoleId!==undefined){
+        const access=db.prepare('SELECT capabilities_json,custom_role_json FROM accounts WHERE id=?').get(accountId);
+        db.prepare('INSERT INTO account_audit (organization_id,actor_id,account_id,action,created_at) VALUES (?,?,?,?,?)').run(principal.organizationId,principal.accountId,accountId,`capabilities:${JSON.stringify(access)}`,now);
+      }
     }
     db.prepare('UPDATE sessions SET revoked_at=? WHERE account_id=? AND revoked_at IS NULL').run(now,accountId);
     db.prepare('INSERT INTO account_audit (organization_id,actor_id,account_id,action,created_at) VALUES (?,?,?,?,?)')

@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 
 const supportedNames = new Set([
-  'AITRACE_BIND_HOST',
+  'AITRACE_BIND_HOST','AITRACE_ALLOWED_HOSTNAMES',
   'AITRACE_REQUEST_BODY_LIMIT_BYTES',
   'AITRACE_REMINDER_INTERVAL_MS',
   'AITRACE_CERTIFICATES_DIR','AITRACE_TLS_BUNDLE_PATH','AITRACE_TLS_CERT_PATH','AITRACE_TLS_KEY_PATH','AITRACE_LOGIN_MAX_ATTEMPTS','AITRACE_LOGIN_WINDOW_MS'
@@ -44,7 +44,9 @@ export function loadConfig({ env = process.env, args = process.argv.slice(2), ro
 
   const port = integer('PORT', env.PORT, 5173, 1, 65535);
   const requestBodyLimitBytes = integer('AITRACE_REQUEST_BODY_LIMIT_BYTES', env.AITRACE_REQUEST_BODY_LIMIT_BYTES, 32768, 1024, 1048576);
-  const allowedHostnames = Object.freeze(['127.0.0.1', 'localhost']);
+  const configuredHosts = (env.AITRACE_ALLOWED_HOSTNAMES || '127.0.0.1,localhost').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
+  if (!configuredHosts.length || configuredHosts.some(value=>!/^([a-z0-9.-]+)$/.test(value))) throw new Error('AITRACE_ALLOWED_HOSTNAMES must be a comma-separated list of hostnames.');
+  const allowedHostnames = Object.freeze([...new Set(configuredHosts)]);
   const paths = Object.freeze({
     database: databasePath(env.DATABASE_PATH, rootDir),
     distribution: resolve(rootDir, 'dist')

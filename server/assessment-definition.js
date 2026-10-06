@@ -2,7 +2,7 @@
 export function demoDefinition(category) {
   return {
     id:'sme-demonstration',version:'1',status:'approved',demonstration:true,
-    notice:'Demonstration questionnaire and rules only. Not sponsor-approved governance policy or compliance certification.',
+    notice:'Synthetic demonstration questionnaire and scoring only. Not legal advice or compliance certification.',
     effectiveFrom:'2026-09-26',approval:{approvedAt:'2026-09-26T00:00:00.000Z',approvedBy:'Software demonstration fixture only'},appliesTo:[category],
     sources:[{id:'demo',reference:'AITrace synthetic demonstration rules v1; not framework-prescribed thresholds.'}],
     questions:[

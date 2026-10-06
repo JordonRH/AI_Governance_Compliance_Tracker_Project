@@ -1,3 +1,4 @@
+import {accountControl} from './account-menu.js';
 import {test, expect} from '@playwright/test';
 
 async function login(page) {
@@ -14,7 +15,7 @@ test('short desktop keeps branding anchored while keyboard navigation scrolls', 
   const brand = page.locator('.sidebar .brand');
   const before = await brand.boundingBox();
   await page.getByRole('navigation').getByRole('button', {name:'Overview', exact:true}).focus();
-  for (let i=0; i<11; i++) await page.keyboard.press('Tab');
+  for (let i=0; i<(await page.getByRole('navigation').getByRole('button').count())-1; i++) await page.keyboard.press('Tab');
   await expect(page.getByRole('navigation').getByRole('button', {name:'Certificates', exact:true})).toBeFocused();
   expect((await brand.boundingBox()).y).toBeCloseTo(before.y, 0);
   await expect(brand).toBeInViewport();
@@ -44,7 +45,7 @@ for (const appearance of ['srec', 'slate']) {
       await page.request.put('/api/settings', {data:{appearance}});
       await page.reload();
       await page.getByRole('navigation').waitFor();
-      if (theme === 'dark') await page.getByRole('button', {name:'Dark theme', exact:true}).click();
+      if (theme === 'dark') await accountControl(page,'Dark theme');
       for (const width of [1440, 1024, 761, 760, 390]) {
         await page.setViewportSize({width, height:720});
         const nav = page.getByRole('navigation');
@@ -53,7 +54,7 @@ for (const appearance of ['srec', 'slate']) {
           if (name === 'Registry') {
             await page.getByRole('button', {name:'Add AI use', exact:true}).click();
             await page.getByRole('button', {name:'Save record', exact:true}).click();
-            expect(await page.locator('form.record-form').evaluate(el=>el.checkValidity())).toBe(false);
+            expect(await page.locator('form.record-form').filter({has:page.getByRole('button',{name:'Save record',exact:true})}).evaluate(el=>el.checkValidity())).toBe(false);
           }
           await page.evaluate(()=>window.scrollTo(0, document.documentElement.scrollHeight));
           expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -105,7 +106,7 @@ test('sidebar stays anchored through registry details, editing and action histor
   await anchored();
   await page.getByRole('button', {name:'Close details'}).click();
   await page.getByRole('button', {name:`Edit ${records[0].name}`, exact:true}).click();
-  await expect(page.locator('form.record-form')).toBeVisible();
+  await expect(page.locator('form.record-form').filter({has:page.getByRole('button',{name:'Save record',exact:true})})).toBeVisible();
   await anchored();
   await nav.getByRole('button', {name:'Actions', exact:true}).click();
   const row = page.getByRole('row').filter({hasText:'Layout history check'});
@@ -122,7 +123,7 @@ test('desktop rail fills the full document while the panel stays fixed during sc
     await page.request.put('/api/settings',{data:{appearance}});
     await page.reload();
     await page.getByRole('navigation').waitFor();
-    if(await page.getByRole('button',{name:theme==='dark'?'Dark theme':'Light theme',exact:true}).count())await page.getByRole('button',{name:theme==='dark'?'Dark theme':'Light theme',exact:true}).click();
+    if(await page.locator('html').getAttribute('data-theme')!==theme)await accountControl(page,theme==='dark'?'Dark theme':'Light theme');
     await page.setViewportSize({width,height:600});
     await page.getByRole('navigation').getByRole('button',{name:'Accounts',exact:true}).click();
     await page.getByRole('button',{name:'Manage admin@example.test',exact:true}).click();

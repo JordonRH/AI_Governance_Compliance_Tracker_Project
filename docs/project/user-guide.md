@@ -8,7 +8,9 @@ Before signing in, the operator must follow [first setup](development.md). A clo
 
 Use the organisation account supplied by your Administrator. Administrators manage accounts, appearance, reminder settings and certificate staging. Compliance Officers manage the registry, actions, policy reviews and exports. Staff can read registered tools/policies, disclose AI use, submit their own assessments, view assigned work and read their own reminders.
 
-**My password** changes your password and signs out all sessions. After an administrator reset, changing the supplied password is mandatory before entering the workspace.
+**Account** opens a compact desktop menu or a mobile bottom sheet with theme, My password and Sign out controls. Escape closes it. **My password** changes your password and signs out all sessions. After an administrator reset, changing the supplied password is mandatory before entering the workspace.
+
+The table describes the fixed-role baseline. Accounts can add bounded user capabilities or a versioned custom-role template; effective permissions are shown in Manage.
 
 | Capability | Administrator | Compliance Officer | Staff User |
 | --- | --- | --- | --- |
@@ -25,23 +27,44 @@ Use the organisation account supplied by your Administrator. Administrators mana
 
 1. Open **Registry**, choose **Add AI use**, and enter the tool, responsible person/team, purpose, business area and data details. Required fields have an asterisk. **Load fictional examples** is safe to repeat.
 2. Use the search, business-area filter, and **View** button to inspect a record. Staff can inspect details without edit permission. Approval is separate from risk assessment.
-3. Open **Assessments**, select the AI use and start an assessment. Save a partial draft or answer all questions and submit. Reopen drafts from history; submitted assessments cannot be overwritten. Review the result, reasons, source trace and suggested actions. All current rules are labelled demonstration-only.
+3. Open **Assessments**, select the AI use and start an assessment. Save a partial draft or answer all required questions and submit. If Required policy versions are shown, read and acknowledge each version before submission. The submitting account must record its own acknowledgements. Reopen drafts from history; submitted assessments cannot be overwritten. Review the result, reasons, source trace and suggested actions. All current rules are labelled demonstration-only.
 4. Open **Actions**, select the AI use, optionally link a submitted assessment for that same use, name the action, assign an active account and set a due date. **Edit action** updates progress; **View history** shows changes. Staff see their assigned actions; a manager records status changes.
 5. Open **Policies** to upload a PDF or UTF-8 text file up to 1 MiB. Choose checklist topics, reviewer and review date. To replace a policy, choose it under **Version of**; old versions remain downloadable. **Record review** schedules the next review date.
 6. Open **Notifications** for your reminders. The server checks automatically (default every minute). Managers can choose **Check reminders now**. Administrators can change lead/repeat days or disable delivery. Repeated checks do not duplicate the same reminder. Mark messages as read after reviewing them.
-7. Open **Overview** to review assessment outcomes, outstanding/overdue actions and policy reviews. Follow links into the relevant workflow. From **Registry**, export PDF or CSV for a summary covering registry, assessment, action and policy evidence.
+7. Open **Overview** to review assessment outcomes, outstanding/overdue actions and policy reviews. Follow links into the relevant workflow. Use **Reports** for a historical date or a from/to period. Period reports compare the end-of-day totals and category changes between the selected dates; the detailed records show the period end. Matching PDF/CSV exports remain available. Registry exports continue to show current records.
 
 ## Disclose unregistered AI use
 
-Open **Disclose AI use** and describe the tool and data it handles. It enters the register as **Not reviewed** with its staff-disclosure origin retained. A manager chooses **Unreviewed staff disclosures** in Registry, views the record, assesses it and updates approval separately. Decision/change history records the actor and time.
+Open **Registry**, expand **Disclose an unregistered AI tool**, and describe the tool and data it handles. It enters the register as **Not reviewed** with its staff-disclosure origin retained. A manager chooses **Unreviewed staff disclosures** in Registry, views the record, assesses it and updates approval separately. Decision/change history records the actor and time.
 
 ## Administrator controls
 
-**Accounts** lists all accounts in your organisation and supports search. Create accounts with the correct role. **Manage** resets a password or changes role/status; affected sessions are revoked. Disabled users cannot sign in. You cannot remove your own administrator access. Account activity is visible in the console; passwords cannot be viewed.
+**Accounts** lists all accounts in your organisation and supports search. Create accounts with the correct role. **Manage** resets a password or changes role/status; affected sessions are revoked. Disabled users cannot sign in. You cannot remove your own administrator access. Account activity is visible in the console; passwords cannot be viewed. Manage also shows effective permissions, direct capabilities and the assigned custom-role version. Selecting an active template or removing it changes access and revokes sessions; editing the template alone does not change existing assignments.
 
 **Appearance** saves either SREC blue or Slate for the organisation. Each user can independently select light/dark mode. A fresh sign-in screen uses SREC blue until the organisation is known.
 
 **Certificates** generates a temporary local pair, shows expiry and stages uploaded replacements. It does not activate HTTPS or make a certificate browser-trusted. The server operator follows [operations](operations.md) to activate the selected pair, restart and verify it.
+
+## Configuration and historical reporting
+
+Administrators open **Configuration** and use the **Assessment requirements**, **Workflow settings**, **Custom capability roles** and **Version history** sections. Edits stay in place when switching sections. Assessment requirements lets you edit question wording/topics, add required or optional evidence questions and restrict business-area applicability. The four scoring inputs remain required and the synthetic scoring rules stay fixed. Extra questions do not alter risk scores. Leave applicability blank for all areas or enter exact Registry business-area names, one per line.
+
+Use **Save draft version** to prepare changes without activating them, or **Save and activate version** to publish for new work. Enter the approval/change reference. Open **Version history** and expand a saved version to activate it later. Save unsaved edits first; activation and retirement are disabled while the editor contains unsaved changes. **Retire active version** pauses new assessments and actions; existing records remain available. The Activation audit records who changed activation, when and the reference. Sponsor approval is assumed at the user's direction for this implementation; this does not document a sponsor meeting or human UAT.
+
+The Workflow settings section has a live process preview and four control cards. Each explains the selected behaviour, an example and which new work it affects. The controls cover new assessment links, policy acknowledgement, requiring In Progress before completion, and whether completed actions can reopen. The preview reflects unsaved edits; only activation changes the setup used for new work. Assessment and action requirements are captured at creation. If policy acknowledgement is required but no current policy is linked to a question, link a policy before starting a new assessment. Later policy versions do not replace a draft's required versions. Reading acknowledgement records a user declaration rather than proving comprehension.
+
+**Reports** reconstructs records at the end of the selected UTC day. Choose a date and **Refresh view**, then switch between six report cards:
+
+- **Registry approvals**: AI uses by Not reviewed, Approved or Declined.
+- **Assessments**: all Draft and Submitted assessment records, including repeat assessments of an AI use.
+- **Actions**: Not Started, In Progress and Complete, with a separate overdue count.
+- **Policy reviews**: latest version of each policy document, classified as Review pending, Due today, Overdue or Reviewed. A due/overdue review takes precedence over an earlier review receipt.
+- **Risk outcomes**: the latest submitted result per AI use, including Not assessed and the fixed demonstration outcomes.
+- **Business areas**: AI use counts and shares by area.
+
+Choose **Bar chart**, **Doughnut chart** or **Data table**. Counts and percentages remain visible alongside charts; selecting a chart category filters the underlying records. Search and category filters apply only to the record list, not report totals or exports. **Export CSV** and **Export PDF** download the selected report's complete breakdown and records at the displayed date; PDF includes a bar-chart summary. Expand **Full governance evidence export** for all registry records, submitted evidence, actions and policy versions. Changing the date disables exports until the refreshed view matches it.
+
+The capture start is displayed. Earlier states were not captured and cannot be reported; today's view changes as records are saved. On an upgraded database, history starts at the upgrade baseline, not the original record creation date.
 
 ## Demonstration checklist and expected results
 
@@ -60,7 +83,7 @@ Use a fresh fictional database if you need an empty starting point; see [operati
 
 ## Practical limits
 
-Notifications are in-app and require the server to run. Legacy free-text action owners need account assignment before delivery. Uploads are restricted attachments, not malware-scanned documents. PDF text uses a Latin font subset. Email notifications, public password recovery, sponsor-approved risk content and human acceptance remain outside the completed implementation evidence.
+Notifications are in-app and require the server to run. Legacy free-text action owners need account assignment before delivery. Uploads are restricted attachments, not malware-scanned documents. PDF text uses a Latin font subset. Email notifications, public password recovery and human acceptance remain outside the completed implementation evidence. Risk scoring remains synthetic even under the component-approval assumption.
 
 No delete/archive workflow is implemented. For mistakes, edit records where supported, create a new submitted assessment/version when required, or use a separate demonstration database. Ask the operator for backup/restore or account recovery; do not edit database files directly.
 

@@ -1,4 +1,5 @@
-﻿import {test,expect} from '@playwright/test';
+import {accountControl} from './account-menu.js';
+import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 test('all workspace pages pass automated accessibility checks in both themes',async({page},testInfo)=>{
  test.setTimeout(120000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -7,10 +8,10 @@ test('all workspace pages pass automated accessibility checks in both themes',as
  await page.getByLabel('Login').fill('admin@example.test');await page.getByLabel('Password').fill('correct horse battery');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.getByRole('navigation').waitFor();
  for(const appearance of ['srec','slate']){
   await page.request.put('/api/settings',{data:{appearance}});await page.reload();await page.getByRole('navigation').waitFor();
-  if(await page.getByRole('button',{name:'Light theme',exact:true}).count())await page.getByRole('button',{name:'Light theme',exact:true}).click();
+  if(await page.locator('html').getAttribute('data-theme')==='dark')await accountControl(page,'Light theme');
  for(const theme of ['light','dark']){
-  if(theme==='dark')await page.getByRole('button',{name:'Dark theme'}).click();
-  for(const name of ['Overview','Registry','Assessments','Actions','Policies','Notifications','Disclose AI use','Guide','Accounts','Appearance','Certificates','My password']){
+  if(theme==='dark')await accountControl(page,'Dark theme');
+  for(const name of ['Overview','Registry','Assessments','Actions','Policies','Notifications','Reports','Guide','Accounts','Configuration','Appearance','Certificates','My password']){
    await page.getByRole('navigation').getByRole('button',{name,exact:true}).click();
    await page.waitForTimeout(180);
    const result=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();

@@ -118,7 +118,7 @@ For bootstrap with `.env`, set the password using the hidden prompt above, repla
 | --- | --- | --- |
 | PORT | 5173 | Integer 1-65535; normally use an available unprivileged port |
 | DATABASE_PATH | data/aitrace.sqlite | SQLite path; absolute recommended for operational data |
-| AITRACE_BIND_HOST | 127.0.0.1 | Only this bind address is supported |
+| AITRACE_BIND_HOST | 127.0.0.1 | Only this bind address is supported |`r`n| AITRACE_ALLOWED_HOSTNAMES | 127.0.0.1,localhost | Comma-separated hostnames accepted in the HTTP Host header; add the Tailscale Serve hostname when using a tailnet URL |
 | AITRACE_REQUEST_BODY_LIMIT_BYTES | 32768 | Integer 1024-1048576; normal JSON limit |
 | AITRACE_REMINDER_INTERVAL_MS | 60000 | Integer 1000-86400000; scheduler interval |
 | AITRACE_LOGIN_MAX_ATTEMPTS | 10 | Integer 1-100; login/password attempt threshold |
@@ -192,3 +192,7 @@ Default output is in the terminal; traces/screenshots are under ignored `test-re
 | Windows test output locked | Close viewers/editors on output artifacts and rerun; keep personal files out of disposable output |
 
 For backups, restore, emergency admin access, HTTPS activation/rollback and upgrades, follow [operations](operations.md). For editing code and opening PRs, follow [contributing](contributing.md).
+
+## Optional fictional testing pack
+
+After initializing a local demonstration organisation, use the [testing pack instructions](testing-pack.md) to create 18 fictional accounts and eight saved configuration variants with `npm.cmd run testing:seed -- --organization-id <existing-id>`. Supply the shared test password through `AITRACE_ACCOUNT_PASSWORD`; no password is stored in the repository or generated catalogue. The command backs up the database and preserves active configuration and existing accounts.
