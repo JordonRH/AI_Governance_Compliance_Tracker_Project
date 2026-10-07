@@ -1,0 +1,21 @@
+﻿import {execFileSync} from 'node:child_process';
+import {writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+
+const message=process.argv.slice(2).join(' ').trim();
+if(!message) throw new Error('Usage: npm run checkpoint -- "describe the handover"');
+const run=(command,args)=>execFileSync(command,args,{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+run('git',['diff','--check']);
+const branch=run('git',['branch','--show-current']);
+const status=run('git',['status','--short']);
+const latest=run('git',['log','-1','--oneline']);
+const timestamp=new Date().toISOString();
+const body=`# Cross-device checkpoint\n\n- Created: ${timestamp}\n- Branch: ${branch}\n- Handover: ${message}\n- Previous commit: ${latest}\n\n## Working tree at checkpoint\n\n${status||'Clean before checkpoint.'}\n\nContinue by reading `+'`AGENTS.md` and `docs/project/agent-context.md`, then inspect this branch before editing.\n';
+writeFileSync(join(process.cwd(),'docs/project/handover-latest.md'),body,'utf8');
+run('git',['add','-u']);
+run('git',['add','docs/project/handover-latest.md']);
+const staged=run('git',['diff','--cached','--name-only']);
+if(!staged) throw new Error('No tracked changes to checkpoint.');
+execFileSync('git',['commit','-m',`checkpoint: ${message}`],{stdio:'inherit'});
+execFileSync('git',['push'],{stdio:'inherit'});
+console.log(`Checkpoint pushed on ${branch}.`);
