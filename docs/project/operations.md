@@ -123,6 +123,34 @@ Review server-terminal errors and the Notifications page when delivery is missin
 
 A checkout/update does not carry credentials, local data, browser installations or certificate trust from another developer's machine. Those are explicit local setup tasks.
 
+## Portable database export
+
+The current application uses SQLite. Render free storage is ephemeral, so keep a portable export before changing
+deployment or database providers. Stop the application first and run:
+
+    New-Item -ItemType Directory -Path data/exports -Force | Out-Null
+    npm.cmd run database:export -- data/exports/aitrace-portable.json
+
+The export contains every application table, schema version, timestamps and binary policy content encoded as
+base64. It contains account password hashes and governance records, so protect it like the database and never commit
+or upload it to a public location. This is a migration interchange file, not a backup substitute.
+
+The planned hosted database target is standard PostgreSQL, preferably a Supabase project for this showcase because
+it provides a managed PostgreSQL database and an accessible SQL dashboard. The application should be migrated
+through a PostgreSQL adapter and versioned SQL migrations; do not point the current SQLite-only runtime at a
+PostgreSQL connection string. After migration, use pg_dump to create a provider-independent PostgreSQL dump.
+
+To import a protected export into the already-created Supabase schema, set DATABASE_URL only in the local process
+and run:
+
+    $env:DATABASE_URL = Read-Host 'Supabase PostgreSQL connection string'
+    npm.cmd run database:import:postgres -- data/exports/aitrace-portable.json
+    Remove-Item Env:DATABASE_URL
+
+The importer inserts in foreign-key order, preserves account hashes and audit history, converts JSON fields to jsonb,
+and converts policy content to bytea. It is idempotent for existing primary/unique keys. Verify row counts and sign-in
+before switching Render traffic. The importer does not print the connection string.
+
 ## Render deployment
 
 AITrace can run as a Render Node web service. Use `render.yaml` or configure these values in the Render dashboard:

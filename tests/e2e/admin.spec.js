@@ -12,7 +12,7 @@ async function login(page,identifier='admin@example.test',password='correct hors
 test('administrator manages account passwords and access from the directory',async({page})=>{
   await login(page);await page.getByRole('button',{name:'Accounts',exact:true}).click();
   const create=page.locator('form.record-form');
-  await create.getByLabel('Login').fill('managed@example.test');await create.getByLabel('Display name').fill('Managed account');await create.getByLabel('Initial password').fill('initial test password');await create.getByRole('button',{name:'Create account',exact:true}).click();
+  await create.getByLabel('Login').fill('managed@example.test');await create.getByLabel('Display name').fill('Managed account');await create.locator('input[name="password"]').fill('initial test password');await create.locator('input[name="confirmPassword"]').fill('initial test password');await create.getByRole('button',{name:'Create account',exact:true}).click();
   await expect(page.getByRole('status')).toHaveText('Account created.');
   await page.getByLabel('Search accounts').fill('managed@example.test');await page.getByRole('button',{name:'Manage managed@example.test',exact:true}).click();
   await page.getByLabel(/^New password/).fill('replacement test password');await page.getByLabel('Confirm new password').fill('replacement test password');await page.getByRole('button',{name:'Reset password',exact:true}).click();
