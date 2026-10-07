@@ -1,7 +1,7 @@
 import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {DatabaseSync} from 'node:sqlite';
+import {openDatabase} from './database.js';
 import {createServer} from 'node:http';
 import {createAccount,login,revokeRequestSession} from './auth.js';
 import {createApp} from './app.js';
@@ -20,8 +20,7 @@ if(typeof password!=='string'||password.length<12||password.length>200)throw new
 const databasePath=resolve(process.env.DATABASE_PATH||'data/aitrace.sqlite');
 if(!existsSync(databasePath))throw new Error('Initialize the application database and organisation before seeding.');
 const outputDir=resolve(options['--output-dir']||resolve(dirname(databasePath),'testing'));
-const db=new DatabaseSync(databasePath);
-db.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
+const db=openDatabase(databasePath);
 let server,adminCookie,backup;
 const ownCookies=new Set();
 

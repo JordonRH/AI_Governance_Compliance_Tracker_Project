@@ -71,7 +71,7 @@ export function createApp(db, http, {certificates} = {}) {
     if (['POST','PUT','PATCH'].includes(req.method) && !req.is('application/json')) return res.status(415).json({ error: 'Content-Type must be application/json.' });
     next();
   });
-  app.use('/api', (req, _res, next) => { req.principal = resolveRequestPrincipal(db, req); next(); });
+  app.use('/api', async (req, _res, next) => { try { req.principal = await resolveRequestPrincipal(db, req); next(); } catch (error) { next(error); } });
   app.use('/api',(req,res,next)=>{
     if(req.principal?.mustChangePassword&&!['/auth/session','/auth/logout','/auth/password','/auth/login','/health'].includes(req.path))return res.status(403).json({error:'Change your password before continuing.'});
     next();
@@ -96,7 +96,7 @@ export function createApp(db, http, {certificates} = {}) {
   registerGovernanceConfiguration(app,db,requirePermission);
   registerPolicies(app,db,requirePermission);
   registerNotifications(app,db,requirePermission);
-  app.get('/api/health', (_req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', mode: 'local-prototype' }); });
+  app.get('/api/health', async (_req, res, next) => { try { await db.get('SELECT 1'); res.json({ status: 'ok', mode: db.pool ? 'postgresql' : 'sqlite' }); } catch (error) { next(error); } });
   app.get('/api/auth/session', (req, res) => res.json({ principal: req.principal }));
   app.post('/api/auth/login', throttle, async (req, res, next) => {
     try {
@@ -107,8 +107,8 @@ export function createApp(db, http, {certificates} = {}) {
       res.json({ principal: result.principal });
     } catch (error) { next(error); }
   });
-  app.post('/api/auth/logout', (req, res) => {
-    revokeRequestSession(db, req);
+  app.post('/api/auth/logout', async (req, res, next) => {
+    try { await revokeRequestSession(db, req); } catch (error) { return next(error); }
     res.setHeader('Set-Cookie', expiredSessionCookie(http.secure));
     res.json({ status: 'signed-out' });
   });

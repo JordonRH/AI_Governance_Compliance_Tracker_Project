@@ -60,47 +60,46 @@ export async function createAccount(db, { organizationId, organizationName, logi
   if (typeof organizationId !== 'string' || !organizationId.trim() || typeof organizationName !== 'string' || !organizationName.trim()) throw new Error('Organisation id and name are required.');
   const salt = randomBytes(16);
   const hash = await derive(password, salt);
-  db.prepare('INSERT OR IGNORE INTO organizations (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(organizationId.trim(), organizationName.trim(), now, now);
+  await db.run('INSERT OR IGNORE INTO organizations (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', organizationId.trim(), organizationName.trim(), now, now);
   const id = randomUUID();
-  db.prepare(`INSERT INTO accounts (id, organization_id, login, display_name, role, password_salt, password_hash, password_cost, password_block_size, password_parallelization, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`).run(id, organizationId.trim(), normalized, displayName.trim(), role, salt.toString('hex'), hash.toString('hex'), parameters.cost, parameters.blockSize, parameters.parallelization, now, now);
+  await db.run(`INSERT INTO accounts (id, organization_id, login, display_name, role, password_salt, password_hash, password_cost, password_block_size, password_parallelization, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`, id, organizationId.trim(), normalized, displayName.trim(), role, salt.toString('hex'), hash.toString('hex'), parameters.cost, parameters.blockSize, parameters.parallelization, now, now);
   return id;
 }
 
 export async function login(db, loginIdentifier, password, now = new Date()) {
   const loginName = normalizeLogin(loginIdentifier);
-  const row = db.prepare(`SELECT a.*, o.name organization_name FROM accounts a JOIN organizations o ON o.id=a.organization_id WHERE a.login=?`).get(loginName);
+  const row = await db.get(`SELECT a.*, o.name organization_name FROM accounts a JOIN organizations o ON o.id=a.organization_id WHERE a.login=?`, loginName);
   const salt = row ? Buffer.from(row.password_salt, 'hex') : Buffer.alloc(16);
   const settings = row ? { ...parameters, cost: row.password_cost, blockSize: row.password_block_size, parallelization: row.password_parallelization } : parameters;
   const candidate = await derive(typeof password === 'string' ? password : '', salt, settings);
   const stored = row ? Buffer.from(row.password_hash, 'hex') : Buffer.alloc(parameters.keyLength);
   const valid = stored.length === candidate.length && timingSafeEqual(stored, candidate);
   if (!row || !valid || row.status !== 'active') return null;
-  const current=db.prepare('SELECT password_hash,status FROM accounts WHERE id=?').get(row.id);
+  const current=await db.get('SELECT password_hash,status FROM accounts WHERE id=?', row.id);
   if(!current||current.status!=='active'||current.password_hash!==row.password_hash)return null;
   const token = randomBytes(32).toString('base64url');
   const createdAt = now.toISOString();
   const expiresAt = new Date(now.valueOf() + 8 * 60 * 60 * 1000).toISOString();
-  db.prepare('INSERT INTO sessions (id, token_hash, account_id, created_at, last_used_at, expires_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, NULL)')
-    .run(randomUUID(), tokenHash(token), row.id, createdAt, createdAt, expiresAt);
+  await db.run('INSERT INTO sessions (id, token_hash, account_id, created_at, last_used_at, expires_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, NULL)', randomUUID(), tokenHash(token), row.id, createdAt, createdAt, expiresAt);
   return { token, expiresAt, principal: publicPrincipal({ ...row, account_id: row.id }) };
 }
 
-export function resolveRequestPrincipal(db, request, now = new Date()) {
+export async function resolveRequestPrincipal(db, request, now = new Date()) {
   const token = parseCookies(request.headers.cookie)[cookieName];
   if (!token) return null;
   const current = now.toISOString();
-  const row = db.prepare(`SELECT s.id session_id, s.expires_at, a.id account_id, a.organization_id, a.display_name, a.role, a.status, a.must_change_password,a.capabilities_json,a.custom_role_json, o.name organization_name
+  const row = await db.get(`SELECT s.id session_id, s.expires_at, a.id account_id, a.organization_id, a.display_name, a.role, a.status, a.must_change_password,a.capabilities_json,a.custom_role_json, o.name organization_name
     FROM sessions s JOIN accounts a ON a.id=s.account_id JOIN organizations o ON o.id=a.organization_id
-    WHERE s.token_hash=? AND s.revoked_at IS NULL`).get(tokenHash(token));
+    WHERE s.token_hash=? AND s.revoked_at IS NULL`, tokenHash(token));
   if (!row || row.status !== 'active' || row.expires_at <= current || !permissions[row.role]) return null;
-  db.prepare('UPDATE sessions SET last_used_at=? WHERE id=?').run(current, row.session_id);
+  await db.run('UPDATE sessions SET last_used_at=? WHERE id=?', current, row.session_id);
   return publicPrincipal(row);
 }
 
-export function revokeRequestSession(db, request, now = new Date().toISOString()) {
+export async function revokeRequestSession(db, request, now = new Date().toISOString()) {
   const token = parseCookies(request.headers.cookie)[cookieName];
-  if (token) db.prepare('UPDATE sessions SET revoked_at=? WHERE token_hash=? AND revoked_at IS NULL').run(now, tokenHash(token));
+  if (token) await db.run('UPDATE sessions SET revoked_at=? WHERE token_hash=? AND revoked_at IS NULL', now, tokenHash(token));
 }
 export function hasPermission(principal, permission) {
   return Boolean(principal && (principal.permissions ? principal.permissions.includes(permission) : permissions[principal.role]?.has(permission)));
