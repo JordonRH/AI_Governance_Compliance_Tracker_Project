@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 
 const supportedNames = new Set([
-  'AITRACE_BIND_HOST','AITRACE_ALLOWED_HOSTNAMES',
+  'AITRACE_BIND_HOST','AITRACE_ALLOWED_HOSTNAMES','AITRACE_BOOTSTRAP_LOGIN','AITRACE_BOOTSTRAP_PASSWORD','AITRACE_BOOTSTRAP_DISPLAY_NAME','AITRACE_BOOTSTRAP_ORGANIZATION_ID','AITRACE_BOOTSTRAP_ORGANIZATION_NAME',
   'AITRACE_REQUEST_BODY_LIMIT_BYTES',
   'AITRACE_REMINDER_INTERVAL_MS',
   'AITRACE_CERTIFICATES_DIR','AITRACE_TLS_BUNDLE_PATH','AITRACE_TLS_CERT_PATH','AITRACE_TLS_KEY_PATH','AITRACE_LOGIN_MAX_ATTEMPTS','AITRACE_LOGIN_WINDOW_MS'
@@ -23,6 +23,17 @@ function databasePath(value, rootDir) {
   return value === ':memory:' ? value : resolve(rootDir, value);
 }
 
+function databaseUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (!['postgres:', 'postgresql:'].includes(url.protocol) || !url.hostname) throw new Error();
+    return value;
+  } catch {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL connection string.');
+  }
+}
+
 export function isAllowedHostHeader(value, allowedHostnames) {
   if (typeof value !== 'string') return false;
   const match = /^([a-z0-9.-]+)(?::(\d{1,5}))?$/i.exec(value);
@@ -38,17 +49,18 @@ export function loadConfig({ env = process.env, args = process.argv.slice(2), ro
 
   const production = args.includes('--production');
   const bindHost = env.AITRACE_BIND_HOST || '127.0.0.1';
-  if (bindHost !== '127.0.0.1') {
-    throw new Error('AITRACE_BIND_HOST must remain 127.0.0.1 until authentication and deployment security are approved.');
+  if (bindHost !== '127.0.0.1' && !(production && bindHost === '0.0.0.0')) {
+    throw new Error('AITRACE_BIND_HOST must be 127.0.0.1 locally or 0.0.0.0 in production.');
   }
 
   const port = integer('PORT', env.PORT, 5173, 1, 65535);
   const requestBodyLimitBytes = integer('AITRACE_REQUEST_BODY_LIMIT_BYTES', env.AITRACE_REQUEST_BODY_LIMIT_BYTES, 32768, 1024, 1048576);
-  const configuredHosts = (env.AITRACE_ALLOWED_HOSTNAMES || '127.0.0.1,localhost').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
+  const configuredHosts = (env.AITRACE_ALLOWED_HOSTNAMES || ['127.0.0.1','localhost',env.RENDER_EXTERNAL_HOSTNAME].filter(Boolean).join(',')).split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
   if (!configuredHosts.length || configuredHosts.some(value=>!/^([a-z0-9.-]+)$/.test(value))) throw new Error('AITRACE_ALLOWED_HOSTNAMES must be a comma-separated list of hostnames.');
   const allowedHostnames = Object.freeze([...new Set(configuredHosts)]);
   const paths = Object.freeze({
     database: databasePath(env.DATABASE_PATH, rootDir),
+    databaseUrl: databaseUrl(env.DATABASE_URL),
     distribution: resolve(rootDir, 'dist')
   });
   if(Boolean(env.AITRACE_TLS_CERT_PATH)!==Boolean(env.AITRACE_TLS_KEY_PATH))throw new Error('Configure both TLS certificate and key paths.');

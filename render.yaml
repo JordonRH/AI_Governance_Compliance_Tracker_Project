@@ -1,0 +1,24 @@
+﻿services:
+  - type: web
+    name: aitrace
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AITRACE_BIND_HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        sync: false
+      - key: AITRACE_BOOTSTRAP_LOGIN
+        sync: false
+      - key: AITRACE_BOOTSTRAP_PASSWORD
+        sync: false
+      - key: AITRACE_BOOTSTRAP_DISPLAY_NAME
+        sync: false
+      - key: AITRACE_BOOTSTRAP_ORGANIZATION_ID
+        sync: false
+      - key: AITRACE_BOOTSTRAP_ORGANIZATION_NAME
+        sync: false

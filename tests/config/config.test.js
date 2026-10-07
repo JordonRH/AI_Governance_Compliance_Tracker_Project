@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { resolve } from 'node:path';
 import { isAllowedHostHeader, loadConfig } from '../../server/config.js';
@@ -20,8 +20,13 @@ test('supported settings are configurable and validated', () => {
   assert.equal(config.http.requestBodyLimitBytes, 65536);
   assert.equal(config.production, true);
   assert.throws(() => loadConfig({ env: { PORT: '0' }, rootDir }), /PORT must be between/);
-  assert.throws(() => loadConfig({ env: { AITRACE_BIND_HOST: '0.0.0.0' }, rootDir }), /must remain 127\.0\.0\.1/);
+  assert.throws(() => loadConfig({ env: { AITRACE_BIND_HOST: '0.0.0.0' }, rootDir }), /locally/);
   assert.throws(() => loadConfig({ env: { AITRACE_UNKNOWN: 'value' }, rootDir }), /Unknown AITrace configuration/);
+});
+test('PostgreSQL URL selects hosted database mode without requiring SQLite path', () => {
+  const config = loadConfig({ env: { DATABASE_URL: 'postgresql://db.example.test:5432/aitrace' }, args: ['--production'], rootDir });
+  assert.equal(config.paths.databaseUrl, 'postgresql://db.example.test:5432/aitrace');
+  assert.throws(() => loadConfig({ env: { DATABASE_URL: 'sqlite://not-postgres' }, rootDir }), /valid PostgreSQL/);
 });
 test('host-header validation only permits configured local names and valid ports', () => {
   const allowed = ['127.0.0.1', 'localhost'];
