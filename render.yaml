@@ -10,9 +10,5 @@
         value: production
       - key: AITRACE_BIND_HOST
         value: 0.0.0.0
-      - key: DATABASE_PATH
-        value: /var/data/aitrace.sqlite
-    disk:
-      name: aitrace-data
-      mountPath: /var/data
-      sizeGB: 1
+      - key: DATABASE_URL
+        sync: false

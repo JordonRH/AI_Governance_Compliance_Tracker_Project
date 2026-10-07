@@ -125,8 +125,7 @@ A checkout/update does not carry credentials, local data, browser installations 
 
 ## Portable database export
 
-The current application uses SQLite. Render free storage is ephemeral, so keep a portable export before changing
-deployment or database providers. Stop the application first and run:
+Local development and disposable tests may use SQLite. Hosted Render deployments use Supabase PostgreSQL. Keep a portable export before migration or recovery. Stop the application first and run:
 
     New-Item -ItemType Directory -Path data/exports -Force | Out-Null
     npm.cmd run database:export -- data/exports/aitrace-portable.json
@@ -135,10 +134,7 @@ The export contains every application table, schema version, timestamps and bina
 base64. It contains account password hashes and governance records, so protect it like the database and never commit
 or upload it to a public location. This is a migration interchange file, not a backup substitute.
 
-The planned hosted database target is standard PostgreSQL, preferably a Supabase project for this showcase because
-it provides a managed PostgreSQL database and an accessible SQL dashboard. The application should be migrated
-through a PostgreSQL adapter and versioned SQL migrations; do not point the current SQLite-only runtime at a
-PostgreSQL connection string. After migration, use pg_dump to create a provider-independent PostgreSQL dump.
+The PostgreSQL runtime uses the async `pg` adapter and repository migrations under `server/migrations/postgres/`. Set `DATABASE_URL` only in the process environment; never commit it or paste it into tickets. After migration, use `pg_dump` to create a provider-independent PostgreSQL dump.
 
 To import a protected export into the already-created Supabase schema, set DATABASE_URL only in the local process
 and run:
@@ -159,6 +155,6 @@ AITrace can run as a Render Node web service. Use `render.yaml` or configure the
 - Start command: `npm start`
 - Health check path: `/api/health`
 - `AITRACE_BIND_HOST=0.0.0.0`
-- `DATABASE_PATH=/var/data/aitrace.sqlite`
+- `DATABASE_URL` = the Supabase PostgreSQL connection string, configured as a secret in Render
 
-Attach a persistent disk mounted at `/var/data`; Render filesystems are otherwise ephemeral. Render supplies `RENDER_EXTERNAL_HOSTNAME`, which AITrace automatically adds to its allowed hostnames. Keep the service behind Render HTTPS and do not configure local Tailscale settings for this deployment. Create the first administrator through the supported account bootstrap process, then verify login, registry persistence, assessment submission, policy uploads, action history, reports, and restart recovery.
+Remove `DATABASE_PATH`; it is not used by the hosted deployment. Retain `AITRACE_BIND_HOST=0.0.0.0` and the `AITRACE_BOOTSTRAP_*` variables for the first administrator. Render supplies `RENDER_EXTERNAL_HOSTNAME`, which AITrace automatically adds to its allowed hostnames. Keep the service behind Render HTTPS and do not configure local Tailscale settings for this deployment. Create the first administrator through the supported account bootstrap process, then verify login, registry persistence, assessment submission, policy uploads, action history, reports, and organisation scoping.

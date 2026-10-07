@@ -28,7 +28,7 @@ const certificates=createCertificateStore(config.certificatesDirectory,{secure:c
 const app = createApp(db, config.http,{certificates});
 const server = config.tls ? createHttpsServer(tlsPair,app) : createServer(app);
 let vite;
-const deliver=()=>{try{deliverReminders(db)}catch(error){console.error('Reminder delivery failed; will retry on next scheduled run.')}};
+const deliver=async()=>{try{await deliverReminders(db)}catch(error){console.error('Reminder delivery failed; will retry on next scheduled run.')}};
 deliver();
 const reminderTimer=setInterval(deliver,config.reminderIntervalMs);reminderTimer.unref();
 if (config.production) {
