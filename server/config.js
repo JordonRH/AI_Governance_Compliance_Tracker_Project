@@ -23,6 +23,17 @@ function databasePath(value, rootDir) {
   return value === ':memory:' ? value : resolve(rootDir, value);
 }
 
+function databaseUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (!['postgres:', 'postgresql:'].includes(url.protocol) || !url.hostname) throw new Error();
+    return value;
+  } catch {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL connection string.');
+  }
+}
+
 export function isAllowedHostHeader(value, allowedHostnames) {
   if (typeof value !== 'string') return false;
   const match = /^([a-z0-9.-]+)(?::(\d{1,5}))?$/i.exec(value);
@@ -49,6 +60,7 @@ export function loadConfig({ env = process.env, args = process.argv.slice(2), ro
   const allowedHostnames = Object.freeze([...new Set(configuredHosts)]);
   const paths = Object.freeze({
     database: databasePath(env.DATABASE_PATH, rootDir),
+    databaseUrl: databaseUrl(env.DATABASE_URL),
     distribution: resolve(rootDir, 'dist')
   });
   if(Boolean(env.AITRACE_TLS_CERT_PATH)!==Boolean(env.AITRACE_TLS_KEY_PATH))throw new Error('Configure both TLS certificate and key paths.');

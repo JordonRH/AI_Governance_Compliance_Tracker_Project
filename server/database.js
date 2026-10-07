@@ -2,6 +2,12 @@ import {installHistory} from './history.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { openPostgresDatabase } from './postgres-database.js';
+
+export async function openConfiguredDatabase({ filename, url } = {}) {
+  if (url) return openPostgresDatabase(url);
+  return openDatabase(filename);
+}
 
 export function openDatabase(filename) {
   if (filename !== ':memory:') mkdirSync(dirname(filename), { recursive: true });
@@ -217,5 +223,11 @@ export function openDatabase(filename) {
       db.exec('INSERT INTO schema_migrations VALUES (12); COMMIT');
     } catch(error) { db.exec('ROLLBACK'); throw error; }
   }
+  // Async interface shared with the PostgreSQL adapter. Existing SQLite callers
+  // continue to use prepare()/exec() directly during the transition.
+  db.get = async (sql, ...values) => db.prepare(sql).get(...values);
+  db.all = async (sql, ...values) => db.prepare(sql).all(...values);
+  db.run = async (sql, ...values) => db.prepare(sql).run(...values);
+  db.transaction = async callback => { db.exec('BEGIN'); try { const result = await callback(db); db.exec('COMMIT'); return result; } catch (error) { db.exec('ROLLBACK'); throw error; } };
   return db;
 }

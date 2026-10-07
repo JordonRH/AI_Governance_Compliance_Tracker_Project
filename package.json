@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "aitrace",
   "version": "0.1.0",
   "private": true,
@@ -14,6 +14,8 @@
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
     "account:create": "node server/create-account.js",
+    "database:export": "node server/export-database.js",
+    "database:import:postgres": "node server/import-postgres.js",
     "testing:seed": "node server/seed-testing.js",
     "checkpoint": "node scripts/checkpoint.mjs"
   },
@@ -21,6 +23,7 @@
     "@fontsource/noto-sans": "^5.3.0",
     "express": "^5.1.0",
     "pdfkit": "^0.20.2",
+    "pg": "^8.23.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "selfsigned": "^5.5.0"

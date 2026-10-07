@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import express from 'express';
-import { openDatabase } from './database.js';
+import { openConfiguredDatabase } from './database.js';
 import { createApp } from './app.js';
 import { createAccount } from './auth.js';
 import { loadConfig } from './config.js';
@@ -15,20 +15,20 @@ import { loadConfig } from './config.js';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const config = loadConfig({ rootDir: root });
 if (config.production && !existsSync(resolve(config.paths.distribution, 'index.html'))) throw new Error('Run npm run build before npm run start.');
-const db = openDatabase(config.paths.database);
+const db = await openConfiguredDatabase({ filename: config.paths.database, url: config.paths.databaseUrl });
 const bootstrapPassword=process.env.AITRACE_BOOTSTRAP_PASSWORD;
 const bootstrapLogin=process.env.AITRACE_BOOTSTRAP_LOGIN;
 if(bootstrapPassword||bootstrapLogin){
   const required={login:bootstrapLogin,password:bootstrapPassword,displayName:process.env.AITRACE_BOOTSTRAP_DISPLAY_NAME,organizationId:process.env.AITRACE_BOOTSTRAP_ORGANIZATION_ID,organizationName:process.env.AITRACE_BOOTSTRAP_ORGANIZATION_NAME};
   if(Object.values(required).some(value=>!value)) throw new Error('All AITRACE_BOOTSTRAP_* values are required together.');
-  if(db.prepare('SELECT 1 FROM accounts LIMIT 1').get()===undefined) await createAccount(db,{...required,role:'administrator'});
+  if((await db.get('SELECT 1 FROM accounts LIMIT 1'))===undefined) await createAccount(db,{...required,role:'administrator'});
 }
 const tlsPair=config.tls?(config.tls.bundle?readTlsBundle(config.tls.bundle):{cert:readFileSync(config.tls.cert,'utf8'),key:readFileSync(config.tls.key,'utf8')}):null;
 const certificates=createCertificateStore(config.certificatesDirectory,{secure:config.http.secure,activeFingerprint:tlsPair?validateCertificatePair(tlsPair).fingerprint:null});
 const app = createApp(db, config.http,{certificates});
 const server = config.tls ? createHttpsServer(tlsPair,app) : createServer(app);
 let vite;
-const deliver=()=>{try{deliverReminders(db)}catch(error){console.error('Reminder delivery failed; will retry on next scheduled run.')}};
+const deliver=async()=>{try{await deliverReminders(db)}catch(error){console.error('Reminder delivery failed; will retry on next scheduled run.')}};
 deliver();
 const reminderTimer=setInterval(deliver,config.reminderIntervalMs);reminderTimer.unref();
 if (config.production) {

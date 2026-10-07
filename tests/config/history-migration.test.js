@@ -23,7 +23,7 @@ test('version 11 upgrade preserves snapshots and seeds reporting only from captu
     db.close();db=openDatabase(filename);
     assert.equal(db.prepare('SELECT MAX(version) version FROM schema_migrations').get().version,12);
     assert.equal(db.prepare("SELECT definition_json FROM assessments WHERE id='legacy-assessment'").get().definition_json,definition);
-    assert.equal(activeConfiguration(db,'fictional-migration').version,1);
+    assert.equal((await activeConfiguration(db,'fictional-migration')).version,1);
     const history=db.prepare('SELECT * FROM reporting_history ORDER BY id').all();assert.equal(history.length,2);
     assert.ok(history.every(row=>row.recorded_at>old));
     assert.equal(db.prepare("SELECT reference FROM configuration_events WHERE organization_id='fictional-migration'").get().reference,'Previously active demonstration configuration');

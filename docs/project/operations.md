@@ -123,6 +123,30 @@ Review server-terminal errors and the Notifications page when delivery is missin
 
 A checkout/update does not carry credentials, local data, browser installations or certificate trust from another developer's machine. Those are explicit local setup tasks.
 
+## Portable database export
+
+Local development and disposable tests may use SQLite. Hosted Render deployments use Supabase PostgreSQL. Keep a portable export before migration or recovery. Stop the application first and run:
+
+    New-Item -ItemType Directory -Path data/exports -Force | Out-Null
+    npm.cmd run database:export -- data/exports/aitrace-portable.json
+
+The export contains every application table, schema version, timestamps and binary policy content encoded as
+base64. It contains account password hashes and governance records, so protect it like the database and never commit
+or upload it to a public location. This is a migration interchange file, not a backup substitute.
+
+The PostgreSQL runtime uses the async `pg` adapter and repository migrations under `server/migrations/postgres/`. Set `DATABASE_URL` only in the process environment; never commit it or paste it into tickets. After migration, use `pg_dump` to create a provider-independent PostgreSQL dump.
+
+To import a protected export into the already-created Supabase schema, set DATABASE_URL only in the local process
+and run:
+
+    $env:DATABASE_URL = Read-Host 'Supabase PostgreSQL connection string'
+    npm.cmd run database:import:postgres -- data/exports/aitrace-portable.json
+    Remove-Item Env:DATABASE_URL
+
+The importer inserts in foreign-key order, preserves account hashes and audit history, converts JSON fields to jsonb,
+and converts policy content to bytea. It is idempotent for existing primary/unique keys. Verify row counts and sign-in
+before switching Render traffic. The importer does not print the connection string.
+
 ## Render deployment
 
 AITrace can run as a Render Node web service. Use `render.yaml` or configure these values in the Render dashboard:
@@ -131,6 +155,6 @@ AITrace can run as a Render Node web service. Use `render.yaml` or configure the
 - Start command: `npm start`
 - Health check path: `/api/health`
 - `AITRACE_BIND_HOST=0.0.0.0`
-- `DATABASE_PATH=/var/data/aitrace.sqlite`
+- `DATABASE_URL` = the Supabase PostgreSQL connection string, configured as a secret in Render
 
-Attach a persistent disk mounted at `/var/data`; Render filesystems are otherwise ephemeral. Render supplies `RENDER_EXTERNAL_HOSTNAME`, which AITrace automatically adds to its allowed hostnames. Keep the service behind Render HTTPS and do not configure local Tailscale settings for this deployment. Create the first administrator through the supported account bootstrap process, then verify login, registry persistence, assessment submission, policy uploads, action history, reports, and restart recovery.
+Remove `DATABASE_PATH`; it is not used by the hosted deployment. Retain `AITRACE_BIND_HOST=0.0.0.0` and the `AITRACE_BOOTSTRAP_*` variables for the first administrator. Render supplies `RENDER_EXTERNAL_HOSTNAME`, which AITrace automatically adds to its allowed hostnames. Keep the service behind Render HTTPS and do not configure local Tailscale settings for this deployment. Create the first administrator through the supported account bootstrap process, then verify login, registry persistence, assessment submission, policy uploads, action history, reports, and organisation scoping.
