@@ -12,6 +12,8 @@ Codex uses the skills under `.agents/skills/` as repository-local instructions f
 
 The project-context skill is the normal entry point for cross-device continuation, workflow changes, UX/deployment work, and repository handover. It directs Codex to read repository instructions, project context, relevant source/tests, and current branch/PR state.
 
+Use `agentic-coordinator` when a task needs end-to-end coordination, delegation, integration, verification, commit/PR preparation, or handover. It routes to the detailed workflow document and provides the startup procedure.
+
 ## Editing skills
 
 Edit only the specific `.agents/skills/<name>/SKILL.md` or supporting resource that needs to change. Preserve front matter and invocation intent. Keep a skill narrow and explicit:
