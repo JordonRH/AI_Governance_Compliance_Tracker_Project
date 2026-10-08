@@ -4,6 +4,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 const jsonColumns = new Set(['capabilities_json','custom_role_json','history_json','definition_json','responses_json','result_json','checklist_json','changes_json','configuration_json','record_json']);
 const booleanColumns = new Set(['must_change_password','enabled','deleted']);
+const dateOnlyColumns = new Set(['due_date','review_due']);
 const parameterize = sql => {
   let index = 0;
   const ignore = /^\s*INSERT OR IGNORE\s+/i.test(sql);
@@ -11,7 +12,11 @@ const parameterize = sql => {
   if (ignore) result = result.replace(/;\s*$/, '') + ' ON CONFLICT DO NOTHING';
   return result;
 };
-const sqliteShape = row => row && Object.fromEntries(Object.entries(row).map(([key,value]) => [key, jsonColumns.has(key) && value !== null && typeof value !== 'string' ? JSON.stringify(value) : booleanColumns.has(key) && typeof value === 'boolean' ? Number(value) : value]));
+const sqliteShape = row => row && Object.fromEntries(Object.entries(row).map(([key,value]) => [key,
+  value instanceof Date ? dateOnlyColumns.has(key) ? value.toISOString().slice(0, 10) : value.toISOString() :
+  jsonColumns.has(key) && value !== null && typeof value !== 'string' ? JSON.stringify(value) :
+  booleanColumns.has(key) && typeof value === 'boolean' ? Number(value) : value
+]));
 
 export class PostgresDatabase {
   constructor(url) { this.pool = new Pool({ connectionString: url, max: 10 }); this.transactions = new AsyncLocalStorage(); }
