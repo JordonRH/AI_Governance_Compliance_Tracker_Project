@@ -23,7 +23,7 @@ def base(n,title,intro):
  c.setFillColor(blue);c.setFont('ArialBold',9);c.drawString(M,H-27,'AITRACE  |  SPONSOR WALKTHROUGH')
  c.setFillColor(black);c.setFont('ArialBold',25);c.drawString(M,H-65,title)
  para(intro,M,H-83,C)
- c.setFillColor(muted);c.setFont('Arial',8);c.drawString(M,21,'27 September 2026  |  Fictional demonstration data  |  Capstone prototype');c.drawRightString(W-M,21,f'{n} / 9')
+ c.setFillColor(muted);c.setFont('Arial',8);c.drawString(M,21,'8 October 2026  |  Fictional demonstration data  |  Supabase PostgreSQL on Render');c.drawRightString(W-M,21,f'{n} / 9')
 
 def shot(id,x,top,width,height,full=False):
  path=root/('output/showcase/screenshots' if full else 'test-results/showcase-layout')/(id+'.png')
@@ -42,7 +42,7 @@ def pair(n,title,intro,left,right,takeaway):
  para('Excerpt: '+selected+'.png. Both workflows have full-resolution captures in the screenshot pack.',M,82,C,small)
  para(takeaway,M,61,C,small);c.showPage()
 
-base(1,'AITrace sponsor showcase','An integrated local prototype for Australian SMEs to record AI use, review governance risks and track follow-up work.')
+base(1,'AITrace sponsor showcase','An integrated governance workspace for Australian SMEs to record AI use, review synthetic governance evidence and track follow-up work.')
 para('Prepared for Sri Ramakrishna Engineering College<br/>University of Canberra ICT Capstone<br/>Project 2026 S2R 04',M,H-135,226)
 para('The walkthrough follows a practical journey: register a tool, complete an assessment, assign an action, maintain policy evidence and monitor progress.',M,H-209,226)
 para('<b>For sponsor review</b><br/>Confirm the questionnaire and risk rules, review the SME workflow, and identify changes needed before user acceptance.',M,H-297,226)
@@ -52,7 +52,7 @@ para('All accounts and records shown are fictional. Risk classifications use dem
 pair(2,'Access and guidance','A shared workspace with account-based access and a plain-language starting point.',
  ('01-sign-in','Sign in','Users enter their organisation account. Administrators, Compliance Officers and Staff Users have different permissions.'),
  ('16-guide','Getting started guide','The guide explains the register, review and follow-up workflow and the limits of the prototype.'),
- 'The app runs locally without an AI service or API key. A new installation needs an operator-created Administrator account.')
+ 'The app runs locally or as a Render web service. Hosted mode uses Supabase PostgreSQL; local development and disposable tests retain SQLite.')
 pair(3,'Make AI use visible','Bring formal records and voluntary disclosures into one register.',
  ('03-registry','AI use registry','Search and filter tools, inspect ownership, sensitivity and approval, and export PDF or CSV summaries.'),
  ('15-disclosure','Disclose an AI tool','Staff can report an unregistered use. It enters the register as Not reviewed for a manager to assess.'),
@@ -68,11 +68,11 @@ pair(5,'Act and retain evidence','Give follow-up work an owner and keep policy e
 pair(6,'Keep follow up visible','Reminders connect approaching deadlines with the person responsible.',
  ('14-notifications','Notifications and timing','Administrators configure reminder timing. Managers can run a check, and recipients receive an individual inbox.'),
  ('28-staff-actions','Assigned staff work','Staff see the actions assigned to them; managers control status updates and the wider action register.'),
- 'Reminders are in-app and require the server to run. Repeated checks do not duplicate the same eligible notification; no email delivery is configured.')
+ 'Reminders are in-app and require the server to run. Repeated checks do not duplicate the same eligible notification; no email delivery is configured. Hosted date handling is normalized across PostgreSQL and SQLite.')
 pair(7,'Manage accounts and access','Administrator controls support the everyday account lifecycle.',
  ('17-accounts','Account directory','View and search organisation accounts, create users and inspect recent account activity.'),
  ('18-account-controls','Password and role controls','Reset passwords, change roles or disable access. Resets revoke sessions and require a new password at the next sign-in.'),
- 'Passwords are not displayed in the directory. Separate captures show account creation and the mandatory password-change flow.')
+ 'Passwords are not displayed in the directory. Administrator resets revoke sessions and issue a temporary password; the user must choose a personal password at next sign-in.')
 pair(8,'Configure the workspace','Choose a consistent appearance and prepare the local HTTPS certificate.',
  ('20-appearance','Organisation appearance','Select SREC blue or Slate. Each person can also choose light or dark mode.'),
  ('21-certificates','Administrator certificates','Generate a temporary self-signed pair, inspect expiry and stage a matching replacement certificate and key.'),
@@ -84,14 +84,15 @@ para('Verify the current password, choose a new one and sign out existing sessio
 x=M+cw+22;c.setFillColor(black);c.setFont('ArialBold',13);c.drawString(x,top,'Mobile and role views');shot('25-mobile-overview',x,top-15,122,252)
 para('The screenshot pack includes mobile overview and registry views, Staff and Compliance Officer workspaces, and both alternative appearances.',x+138,top-24,cw-138)
 para('<b>Suggested sponsor discussion</b><br/>Are the roles and workflow right for the intended SMEs?<br/><br/>Which questions, explanations and actions should the approved assessment use?<br/><br/>What evidence is needed for the final demonstration and acceptance?',x+138,top-133,cw-138,small)
-para('Implementation checks passed: 68 application tests and 23 browser tests, including automated accessibility checks. Human SME and screen-reader UAT, sponsor content approval and final handover remain outstanding.',M,71,C,small);c.showPage();c.save()
+para('<b>Current deployment evidence</b><br/>Render starts successfully against Supabase PostgreSQL and <font name="Courier">/api/health</font> reports <font name="Courier">mode: postgresql</font>. The local export was imported: 2 organisations, 20 accounts, 6 AI uses, 3 assessments, 2 actions, 1 policy, 30 audit records and 2,196 reminder runs.',M,94,C,small)
+para('Implementation checks passed: 86 application tests, 29 browser tests, production build and staged whitespace checks. Human SME and screen-reader UAT, sponsor content approval and final handover remain outstanding. The showcase is evidence of a fictional demonstration workflow, not legal advice, certification or sponsor acceptance.',M,53,C,small);c.showPage();c.save()
 # Full-resolution, self-contained screenshot gallery for the requested complete capture set.
 items=[]
 for s in data['screens']:
  items.append(f'<section><h2>{html.escape(s["title"])}</h2><p>{html.escape(s["role"])} &middot; {html.escape(s["id"])}</p><a href="{s["file"]}"><img loading="lazy" src="{s["file"]}" alt="{html.escape(s["title"])} screen"/></a></section>')
-gallery='<!doctype html><html lang="en"><meta charset="utf-8"><title>AITrace complete screenshot gallery</title><style>body{font:16px Arial,sans-serif;color:#162b44;background:#f4f7fb;margin:0 auto;max-width:1250px;padding:36px}h1,h2{color:#102c51}section{background:white;padding:24px;margin:28px 0;border:1px solid #dae2ee;border-radius:12px}img{width:100%;height:auto}p{line-height:1.6}a{color:#075caf}</style><h1>AITrace complete screenshot gallery</h1><p>27 September 2026. All 13 main screens plus key form, role, theme and mobile states: 32 full-page captures. All data is fictional. Click a screenshot to open its original resolution. No operational credentials or private certificate files are included.</p>'+''.join(items)+'</html>'
+gallery='<!doctype html><html lang="en"><meta charset="utf-8"><title>AITrace complete screenshot gallery</title><style>body{font:16px Arial,sans-serif;color:#162b44;background:#f4f7fb;margin:0 auto;max-width:1250px;padding:36px}h1,h2{color:#102c51}section{background:white;padding:24px;margin:28px 0;border:1px solid #dae2ee;border-radius:12px}img{width:100%;height:auto}p{line-height:1.6}a{color:#075caf}</style><h1>AITrace complete screenshot gallery</h1><p>8 October 2026. All 13 main screens plus key form, role, theme and mobile states: 32 full-page captures. All data is fictional. Click a screenshot to open its original resolution. No operational credentials or private certificate files are included.</p>'+''.join(items)+'</html>'
 (root/'output/showcase/index.html').write_text(gallery,encoding='utf-8')
-(root/'output/showcase/README.txt').write_text('AITrace sponsor screenshot pack\n27 September 2026\n\nOpen index.html in a browser to view all 32 captures. Click any screenshot for full resolution. Screenshots are actual app captures using an isolated fictional organisation. No live user data, passwords, database files or private keys are included.\n\nCoverage: Sign in plus all 12 workspace navigation screens; registry add/edit/details, assessment draft/result/history, action history, policy review, account management/creation, forced password change, Staff/Compliance Officer views, mobile layouts, dark mode and Slate style.\n\nThe PDF showcase uses screen excerpts to keep the walkthrough concise. Full-page originals are in screenshots/. Screenshot metadata and roles are listed in screenshots.json.\n',encoding='utf-8')
+(root/'output/showcase/README.txt').write_text('AITrace sponsor screenshot pack\n8 October 2026\n\nOpen index.html in a browser to view all 32 captures. Click any screenshot for full resolution. Screenshots are actual app captures using an isolated fictional organisation. No live user data, passwords, database files or private keys are included.\n\nCoverage: Sign in plus all 12 workspace navigation screens; registry add/edit/details, assessment draft/result/history, action history, policy review, account management/creation, forced password change, Staff/Compliance Officer views, mobile layouts, dark mode and Slate style.\n\nThe PDF showcase also records the completed SQLite-to-Supabase PostgreSQL migration and Render startup verification. The PDF uses screen excerpts to keep the walkthrough concise. Full-page originals are in screenshots/. Screenshot metadata and roles are listed in screenshots.json.\n',encoding='utf-8')
 with zipfile.ZipFile(root/'output/showcase/aitrace-screenshot-pack.zip','w',zipfile.ZIP_DEFLATED) as z:
  for p in sorted((root/'output/showcase/screenshots').glob('*.png')):z.write(p,'screenshots/'+p.name)
  for name in ['README.txt','index.html','screenshots.json']:z.write(root/'output/showcase'/name,name)
