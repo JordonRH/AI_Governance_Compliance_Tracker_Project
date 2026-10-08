@@ -33,6 +33,13 @@
 .uat-banner{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:4px 12px;padding:7px 16px;background:var(--soft);color:var(--text);border-bottom:1px solid var(--border);font-size:12px;line-height:1.5}
 .uat-banner strong{letter-spacing:.3px}
 
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overflow-x:hidden}
+.account-identity{min-width:0}
+.account-identity .greeting{display:block;font-size:15px;font-weight:700;line-height:1.25;overflow-wrap:anywhere}
+.account-menu>summary{display:flex;align-items:center;gap:8px;font-weight:700}
+.account-menu>summary small{display:block;color:var(--muted);font-size:10px;font-weight:500}
+
 .field:has(:required:valid) .required-mark{visibility:hidden}
 .accordion{padding:0}.accordion>summary{cursor:pointer;font-size:16px;font-weight:650;list-style:none;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}.accordion>summary::-webkit-details-marker{display:none}.accordion>summary::after{content:'+';font-size:22px;font-weight:400;line-height:1;color:var(--muted)}.accordion[open]>summary{border-bottom:1px solid var(--border)}.accordion[open]>summary::after{content:'−'}.accordion>:not(summary){margin-left:24px;margin-right:24px}.accordion>.filters-grid{padding-top:20px;padding-bottom:24px}.accordion>form{margin-top:20px;margin-bottom:24px}.accordion>p{margin-top:20px}.accordion>p:last-child{padding-bottom:24px}
 
