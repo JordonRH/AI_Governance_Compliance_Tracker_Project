@@ -6,6 +6,27 @@ export const defaultWorkflow = () => ({
   requireInProgressBeforeCompletion: false,
   allowReopen: true
 });
+export const workflowFunctionCatalog = Object.freeze([
+  { key: 'start', label: 'Start', description: 'Begin a governed workflow.' },
+  { key: 'register', label: 'Register AI use', description: 'Capture the AI use, owner and business context.' },
+  { key: 'assess', label: 'Run assessment', description: 'Collect the bounded governance evidence questions.' },
+  { key: 'policy', label: 'Acknowledge policy', description: 'Require acknowledgement of linked policy versions.' },
+  { key: 'decision', label: 'Review decision', description: 'Review the synthetic result and supporting evidence.' },
+  { key: 'action', label: 'Create follow-up action', description: 'Create owned, dated follow-up work.' },
+  { key: 'review', label: 'Manual review gate', description: 'Pause for a named person to review the record.' },
+  { key: 'notify', label: 'Notify participants', description: 'Send an in-app workflow notification.' },
+  { key: 'report', label: 'Capture report snapshot', description: 'Make the current state available to reporting.' },
+  { key: 'end', label: 'Complete', description: 'Finish this workflow path.' }
+]);
+const workflowFunctionKeys = new Set(workflowFunctionCatalog.map(item => item.key));
+export const defaultWorkflowCanvas = () => {
+  const nodes = [
+    ['node-start', 'start', 'Start'], ['node-register', 'register', 'Register AI use'], ['node-assess', 'assess', 'Run assessment'],
+    ['node-decision', 'decision', 'Review decision'], ['node-action', 'action', 'Create follow-up action'],
+    ['node-review', 'review', 'Manual review gate'], ['node-report', 'report', 'Capture report snapshot'], ['node-end', 'end', 'Complete']
+  ].map(([id, functionKey, title]) => ({ id, function: functionKey, title, description: workflowFunctionCatalog.find(item => item.key === functionKey).description, manualReview: functionKey === 'review', requiresEvidence: functionKey === 'assess' || functionKey === 'policy' }));
+  return { version: 1, nodes, edges: nodes.slice(0, -1).map((node, index) => ({ id: `edge-${index + 1}`, from: node.id, to: nodes[index + 1].id, label: 'Continue' })) };
+};
 export const defaultAutomationRules = () => [];
 export const defaults = () => ({
   questions: demoDefinition('All').questions.map(({
@@ -21,11 +42,14 @@ export const defaults = () => ({
   businessAreas: [],
   customRoles: [],
   workflow: defaultWorkflow(),
-  automationRules: defaultAutomationRules()
+  automationRules: defaultAutomationRules(),
+  workflowCanvas: defaultWorkflowCanvas()
 });
 const decode = row => ({
   version: row.version,
-  ...JSON.parse(row.configuration_json)
+  ...defaults(),
+  ...JSON.parse(row.configuration_json),
+  workflowCanvas: JSON.parse(row.configuration_json).workflowCanvas || defaultWorkflowCanvas()
 });
 export async function currentConfiguration(db, organizationId) {
   const row = await db.get('SELECT * FROM governance_configurations WHERE organization_id=? ORDER BY version DESC LIMIT 1', organizationId);
@@ -76,7 +100,7 @@ export async function assessmentDefinition(db, organizationId, category) {
 const validText = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
 function validate(input) {
   const base = defaults();
-  if (!input || Object.keys(input).some(k => !['expectedVersion', 'questions', 'businessAreas', 'customRoles', 'workflow', 'automationRules', 'activate', 'approvalReference', 'expectedLifecycleRevision'].includes(k))) return false;
+  if (!input || Object.keys(input).some(k => !['expectedVersion', 'questions', 'businessAreas', 'customRoles', 'workflow', 'automationRules', 'workflowCanvas', 'activate', 'approvalReference', 'expectedLifecycleRevision'].includes(k))) return false;
   if (input.expectedLifecycleRevision !== undefined && !Number.isSafeInteger(input.expectedLifecycleRevision)) return false;
   if (input.activate !== undefined && typeof input.activate !== 'boolean') return false;
   if (input.approvalReference !== undefined && !validText(input.approvalReference, 500)) return false;
@@ -86,7 +110,23 @@ function validate(input) {
   if (input.businessAreas !== undefined && (!Array.isArray(input.businessAreas) || input.businessAreas.length > 40 || new Set(input.businessAreas).size !== input.businessAreas.length || input.businessAreas.some(area => !validText(area, 120) || area !== area.trim()))) return false;
   if (!Array.isArray(input.customRoles) || input.customRoles.length > 12 || input.customRoles.some(r => !r || Object.keys(r).some(k => !['id', 'name', 'permissions'].includes(k)) || typeof r.id !== 'string' || !/^custom-[a-z0-9-]{1,40}$/.test(r.id) || !validText(r.name, 80) || !Array.isArray(r.permissions) || r.permissions.some(p => !capabilities.includes(p)) || new Set(r.permissions).size !== r.permissions.length) || new Set(input.customRoles.map(r => r.id)).size !== input.customRoles.length) return false;
   if (input.automationRules !== undefined && (!Array.isArray(input.automationRules) || input.automationRules.length > 12 || input.automationRules.some(rule => !rule || Object.keys(rule).some(k => !['id', 'name', 'event', 'outcome', 'title', 'dueDays'].includes(k)) || typeof rule.id !== 'string' || !/^automation-[a-z0-9-]{1,40}$/.test(rule.id) || !validText(rule.name, 100) || rule.event !== 'assessment.submitted' || rule.outcome !== undefined && rule.outcome !== '' && !['High (demo)', 'Medium (demo)', 'Low (demo)'].includes(rule.outcome) || !validText(rule.title, 200) || !Number.isInteger(rule.dueDays) || rule.dueDays < 0 || rule.dueDays > 365) || new Set(input.automationRules.map(r => r.id)).size !== input.automationRules.length)) return false;
-  return input.workflow && typeof input.workflow === 'object' && !Array.isArray(input.workflow) && Object.keys(input.workflow).every(k => Object.hasOwn(defaultWorkflow(), k)) && ['allowLinkedActions', 'mandatoryPolicyReading'].every(k => typeof input.workflow[k] === 'boolean') && ['requireInProgressBeforeCompletion', 'allowReopen'].every(k => input.workflow[k] === undefined || typeof input.workflow[k] === 'boolean');
+  if (!(input.workflow && typeof input.workflow === 'object' && !Array.isArray(input.workflow) && Object.keys(input.workflow).every(k => Object.hasOwn(defaultWorkflow(), k)) && ['allowLinkedActions', 'mandatoryPolicyReading'].every(k => typeof input.workflow[k] === 'boolean') && ['requireInProgressBeforeCompletion', 'allowReopen'].every(k => input.workflow[k] === undefined || typeof input.workflow[k] === 'boolean'))) return false;
+  if (input.workflowCanvas === undefined) return true;
+  const canvas = input.workflowCanvas;
+  if (!canvas || canvas.version !== 1 || !Array.isArray(canvas.nodes) || canvas.nodes.length < 2 || canvas.nodes.length > 24 || !Array.isArray(canvas.edges) || canvas.edges.length !== canvas.nodes.length - 1 || canvas.edges.length > 23) return false;
+  const ids = new Set(canvas.nodes.map(node => node?.id));
+  if (ids.size !== canvas.nodes.length || canvas.nodes.some(node => !node || typeof node.id !== 'string' || !/^node-[a-z0-9-]{1,40}$/.test(node.id) || !workflowFunctionKeys.has(node.function) || !validText(node.title, 120) || node.description !== undefined && (typeof node.description !== 'string' || node.description.length > 500) || node.manualReview !== undefined && typeof node.manualReview !== 'boolean' || node.requiresEvidence !== undefined && typeof node.requiresEvidence !== 'boolean')) return false;
+  const starts = canvas.nodes.filter(node => node.function === 'start'), ends = canvas.nodes.filter(node => node.function === 'end');
+  if (starts.length !== 1 || ends.length !== 1) return false;
+  const edgeIds = new Set(), outgoing = new Map(), incoming = new Map();
+  for (const edge of canvas.edges) {
+    if (!edge || typeof edge.id !== 'string' || !/^edge-[a-z0-9-]{1,40}$/.test(edge.id) || edgeIds.has(edge.id) || !ids.has(edge.from) || !ids.has(edge.to) || edge.from === edge.to || edge.label !== undefined && (typeof edge.label !== 'string' || edge.label.length > 120)) return false;
+    edgeIds.add(edge.id); outgoing.set(edge.from, [...(outgoing.get(edge.from) || []), edge.to]); incoming.set(edge.to, [...(incoming.get(edge.to) || []), edge.from]);
+  }
+  if ((incoming.get(starts[0].id) || []).length || (outgoing.get(ends[0].id) || []).length) return false;
+  const visited = new Set(), visiting = new Set();
+  const walk = id => { if (visiting.has(id)) return false; if (visited.has(id)) return true; visiting.add(id); if (!(outgoing.get(id) || []).every(walk)) return false; visiting.delete(id); visited.add(id); return true; };
+  return walk(starts[0].id) && visited.size === canvas.nodes.length && visited.has(ends[0].id);
 }
 async function event(db, principal, version, action, reference) {
   await db.run('INSERT INTO configuration_events(organization_id,version,action,actor_id,reference,created_at) VALUES (?,?,?,?,?,?)', principal.organizationId, version, action, principal.accountId, reference, new Date().toISOString());
@@ -149,6 +189,7 @@ export function registerGovernanceConfiguration(app, db, requirePermission) {
             ...input.workflow
           },
           automationRules: input.automationRules || [],
+          workflowCanvas: input.workflowCanvas || defaultWorkflowCanvas(),
           assessmentDefinition: definition
         },
         now = new Date().toISOString();

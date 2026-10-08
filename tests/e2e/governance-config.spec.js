@@ -30,6 +30,21 @@ test('account menu works with keyboard and stays in view on mobile',async({page}
   const menu=page.locator('.account-menu');await menu.locator('summary').click();await expect(menu.getByRole('button',{name:'My password'})).toBeVisible();const box=await menu.locator('.account-menu-panel').boundingBox();expect(box.y+box.height).toBeLessThanOrEqual(844);await menu.getByRole('button',{name:'My password'}).focus();await page.keyboard.press('Escape');await expect(menu).not.toHaveAttribute('open');await expect(menu.locator('summary')).toBeFocused();
 });
 
+test('visual workflow editor adds, edits and reorders bounded function steps',async({page})=>{
+  await page.goto('/');await page.getByLabel('Login').fill('admin@example.test');await page.getByLabel('Password').fill('correct horse battery');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.getByRole('navigation').waitFor();
+  const baseline=await (await page.request.get('/api/governance-configuration')).json();
+  try {
+    await page.getByRole('button',{name:'Configuration',exact:true}).click();await page.getByRole('button',{name:'Workflow settings',exact:true}).click();
+    await page.getByRole('button',{name:'Notify participants'}).click();
+    const newStep=page.locator('.workflow-node').last();await expect(newStep).toBeVisible();await newStep.getByLabel(/Step name/).fill('Notify governance participants');
+    await newStep.getByRole('button',{name:/Move step .* earlier/}).click();
+    await page.getByRole('button',{name:'Save draft version'}).click();await expect(page.getByRole('status')).toContainText('Draft version saved');
+    const saved=await (await page.request.get('/api/governance-configuration')).json();expect(saved.workflowCanvas.nodes.some(node=>node.title==='Notify governance participants')).toBe(true);expect(saved.workflowCanvas.edges.length).toBe(saved.workflowCanvas.nodes.length-1);
+  } finally {
+    const latest=await (await page.request.get('/api/governance-configuration')).json();await page.request.put('/api/governance-configuration',{data:{expectedVersion:latest.version,questions:baseline.questions,businessAreas:baseline.businessAreas||[],customRoles:baseline.customRoles,workflow:baseline.workflow,workflowCanvas:baseline.workflowCanvas}});
+  }
+});
+
 test('saved configuration activation enforces policy acknowledgements and preserves entered answers',async({page})=>{
   await page.goto('/');await page.getByLabel('Login').fill('admin@example.test');await page.getByLabel('Password').fill('correct horse battery');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.getByRole('navigation').waitFor();
   const baseline=await (await page.request.get('/api/governance-configuration')).json();
