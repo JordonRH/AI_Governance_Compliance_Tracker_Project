@@ -4,6 +4,8 @@
 
 AITrace is a fictional/de-identified AI governance workflow for an Australian SME showcase. Read [the agent project context](docs/project/agent-context.md) before changing product behaviour, deployment, or governance wording. It is the single source of truth for the workflow story, boundaries, and continuation checklist.
 
+For multi-role or delegated development work, follow the [agentic development workflow](docs/project/agentic-development-workflow.md). The coordinator owns scope, integration, verification and handover; specialist roles may propose or implement changes only within the boundaries documented there.
+
 ## Working loop
 
 1. Inspect `git status --short --branch` and preserve existing work.
