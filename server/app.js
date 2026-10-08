@@ -726,8 +726,8 @@ export function createApp(db, http, {
   app.use('/api', (_req, res) => res.status(404).json({
     error: 'API route was not found.'
   }));
-  app.use('/api', (error, _req, res, _next) => {
-    console.error(error.message);
+  app.use('/api', (error, req, res, _next) => {
+    console.error(`[api ${req.method} ${req.originalUrl}]`, error);
     res.status(500).json({
       error: 'The request could not be completed. Please try again.'
     });
