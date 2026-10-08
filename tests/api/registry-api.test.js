@@ -220,9 +220,11 @@ test('configuration versions preserve definitions, enforce scope and lock scorin
   const aiUseId=(await api('/api/registry',auth(adminCookie))).body.records[0].id;
   const old=(await api('/api/assessments',auth(adminCookie,'POST',{aiUseId}))).body;
   const input={expectedVersion:baseline.version,questions:baseline.questions.map(q=>({...q,label:`Fictional wording: ${q.label}`})),customRoles:[{id:'custom-manager',name:'Fictional manager',permissions:['action:manage','assessment:review']}],workflow:{allowLinkedActions:false,mandatoryPolicyReading:false}};
-  for(const body of [{...input,rules:[]},{...input,workflow:{...input.workflow,mandatoryPolicyReading:"true"}},{...input,customRoles:[{id:'custom-admin',name:'Invalid',permissions:['account:manage']}]},{...input,questions:[null,...input.questions.slice(1)]}])assert.equal((await api(path,auth(adminCookie,'PUT',body))).response.status,400);
+  const canvas=baseline.workflowCanvas;
+  for(const body of [{...input,rules:[]},{...input,workflow:{...input.workflow,mandatoryPolicyReading:"true"}},{...input,customRoles:[{id:'custom-admin',name:'Invalid',permissions:['account:manage']}]},{...input,questions:[null,...input.questions.slice(1)]},{...input,workflowCanvas:{...canvas,edges:[...canvas.edges,{id:'edge-extra',from:canvas.nodes.at(-1).id,to:canvas.nodes[0].id,label:'Cycle'}]}}])assert.equal((await api(path,auth(adminCookie,'PUT',body))).response.status,400);
   assert.equal((await api(path,auth(staffCookie,'PUT',input))).response.status,403);
   assert.equal((await api(path,auth(adminCookie,'PUT',input))).response.status,200);
+  const saved=(await api(path,auth(adminCookie))).body;assert.equal(saved.workflowCanvas.nodes.length,baseline.workflowCanvas.nodes.length);assert.equal(saved.workflowCanvas.edges.length,saved.workflowCanvas.nodes.length-1);
   assert.equal((await api(path,auth(adminCookie,'PUT',input))).response.status,409);
   assert.equal((await api(path,auth(otherCookie))).body.version,0);
   const fresh=(await api('/api/assessments',auth(adminCookie,'POST',{aiUseId}))).body;
