@@ -1,0 +1,27 @@
+name: Build and deploy AITrace
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/jordonrh/ai-governance-compliance-tracker
+
+jobs:
+  build-and-deploy:
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start the stack
+        run: >-
+          docker compose
+          --project-name aitrace
+          --env-file /opt/docker/ai-trace/.env
+          -f "$GITHUB_WORKSPACE/compose.yml"
+          up -d --build --remove-orphans
