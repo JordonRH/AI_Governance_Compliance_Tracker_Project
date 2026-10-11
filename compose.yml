@@ -45,6 +45,7 @@ services:
       retries: 3
 
   cloudflared:
+    profiles: ["tunnel"]
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
     depends_on:

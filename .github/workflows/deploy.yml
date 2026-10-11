@@ -22,6 +22,6 @@ jobs:
         run: >-
           docker compose
           --project-name aitrace
-          --env-file /opt/docker/ai-trace/.env
+          --env-file /home/jbox/ai-trace-runtime/.env
           -f "$GITHUB_WORKSPACE/compose.yml"
-          up -d --build --remove-orphans
+          up -d --build --remove-orphans db app
