@@ -21,7 +21,8 @@ jobs:
       - name: Build and start the stack
         run: >-
           docker compose
+          --profile tunnel
           --project-name aitrace
           --env-file /home/jbox/ai-trace-runtime/.env
           -f "$GITHUB_WORKSPACE/compose.yml"
-          up -d --build --remove-orphans db app
+          up -d --build --remove-orphans db app cloudflared
