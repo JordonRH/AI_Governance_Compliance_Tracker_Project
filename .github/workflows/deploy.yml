@@ -25,4 +25,4 @@ jobs:
           --project-name aitrace
           --env-file /home/jbox/ai-trace-runtime/.env
           -f "$GITHUB_WORKSPACE/compose.yml"
-             up -d --build --remove-orphans db app cloudflared portainer
+          up -d --build --remove-orphans db app cloudflared portainer
