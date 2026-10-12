@@ -55,8 +55,19 @@ services:
     networks:
       - proxy
 
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: aitrace-portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - proxy
+
 volumes:
   postgres_data:
+  portainer_data:
 
 networks:
   app_internal:
